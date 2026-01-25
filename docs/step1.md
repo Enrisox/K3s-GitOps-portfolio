@@ -183,3 +183,77 @@ Il token serve ai nodi worker per unirsi al cluster. Generalo così:
 
 sudo cat /var/lib/rancher/k3s/server/node-token
 
+vm master su proxmox deve avere disco da almeno 40 gb!! altrimenti comando qui sotto fallisce.. 
+# su raspberry nodo worker 
+
+sudo swapoff -a
+sudo sed -i '/ swap / s/^/#/' /etc/fstab    #impedisce che lo swap si riattivi al riavvio.
+Dopo questo, il Raspberry sarà pronto per installare K3s come worker senza rischi.
+
+curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.30:6443 K3S_TOKEN=************************************* sh -
+
+# dato che su raspberry non riesco a registrare il worker , provo a creare una vm worker su proxmox 
+
+Creazione nuova VM worker 113 (Ubuntu Server con password)
+
+Qui useremo la Ubuntu cloud-image, ma con cloud-init abilitato così possiamo impostare subito un utente e password a tua scelta.
+
+# Crea la VM
+qm create 113 \
+  --name k3s-worker \
+  --memory 4096 \
+  --cores 2 \
+  --net0 virtio,bridge=vmbr0 \
+  --ostype l26 \
+  --boot c \
+  --bootdisk scsi0 \
+  --scsihw virtio-scsi-pci \
+  --serial0 socket \
+  --vga std
+
+3️⃣ Importa disco Ubuntu cloud-image
+
+Assicurati di avere l’immagine:
+
+wget -P /var/lib/vz/template/iso/ https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+
+
+Poi importa il disco e allocalo su local-lvm (disco grande 40 GB):
+
+qm importdisk 113 /var/lib/vz/template/iso/jammy-server-cloudimg-amd64.img local-lvm
+qm set 113 --scsi0 local-lvm:vm-113-disk-0,size=40G
+
+4️⃣ Configura Cloud-init e utente
+qm set 113 --ide2 local-lvm:cloudinit
+qm set 113 --ciuser ubuntu
+qm set 113 --cipassword porcodio
+qm set 113 --agent enabled=1
+
+Questo creerà un utente ubuntu con password porcodio e potrai fare login da console o SSH.
+
+a vm non ha ip quindi glielo diamo manualmente..
+sudo nano /etc/netplan/50-cloud-init.yaml
+
+network:
+    version: 2
+    ethernets:
+        ens18:
+            dhcp4: no
+            addresses: [192.168.1.31/24]
+            gateway4: 192.168.1.1
+            nameservers:
+                addresses: [192.168.1.1,8.8.8.8]
+
+sudo netplan apply
+# su worker 
+curl -sfL https://get.k3s.io | \
+K3S_URL=https://192.168.1.30:6443 \
+K3S_TOKEN=*******************::server:****************** \
+sh -
+
+
+fallisce perchè mi ha creato una vm con disco minucolo da 2 gb e va aumentato .. diocane!
+
+sudo cat /var/lib/rancher/k3s/server/node-token  per vedere il token master
+sudo k3s kubectl get nodes   per vedere i nodi dal master
+
