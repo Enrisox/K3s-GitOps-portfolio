@@ -343,3 +343,19 @@ curl http://localhost:30080  # Test locale sul master
 
 IMMAGINE NGINX 
 
+----
+
+sudo k3s kubectl top pod    # RAM/CPU uso (installa metrics-server se "not found")
+sudo k3s kubectl describe pod -l app=web-app  # Dettagli risorse
+
+scaliamo a 2 repliche 
+
+sudo k3s kubectl scale deployment web-app --replicas=2
+
+sudo k3s kubectl get endpoints web-app-service   #deprecato
+sudo k3s kubectl get endpointslices -l kubernetes.io/service-name=web-app-service   #piu moderno
+
+**PER CONTROLLARE LOADBALANCING TRA DUE POD**
+
+sudo k3s kubectl exec pod/web-app-b4f479ccd-48x5s -- cat /var/log/nginx/access.log | tail -5
+
