@@ -257,3 +257,89 @@ fallisce perchè mi ha creato una vm con disco minucolo da 2 gb e va aumentato .
 sudo cat /var/lib/rancher/k3s/server/node-token  per vedere il token master
 sudo k3s kubectl get nodes   per vedere i nodi dal master
 
+**Etichettiamo il worker**
+
+Serve per schedulare roba solo lì (best practice).
+
+Sul master:
+
+sudo k3s kubectl label node k3s-worker node-role.kubernetes.io/worker=worker
+----------------------------------------------
+
+Cos'è kubectl (e Perché sudo k3s kubectl)
+kubectl è il programma (CLI) che invii ordini al cluster (tipo "crea pod", "lista nodi").
+
+Su K3s, si chiama k3s kubectl (non solo kubectl), e serve sudo per i permessi.
+
+Crea i File YAML (Sul Master)
+YAML sono file di configurazione "umani" per dire a K8s "cosa voglio". Crea 2 file con nano (editor semplice).
+
+mkdir k3s-lab          # Crea folder
+cd /k3s-lab             # Entra (prompt diventa ~/k3s-lab$)
+nano web-app-deployment.yaml 
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+Cosa fa: Crea 1 "pod" (contenitore nginx che gira web server su porta 80 interna). Gestisce riavvii automatici.
+
+nano web-app-service.yaml
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app-service
+spec:
+  type: NodePort
+  selector:
+    app: web-app
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30080
+Cosa fa: "Apre un tunnel" dal mondo esterno (porta 30080 su IP master/worker) al pod interno (porta 80).
+
+Salva: Ctrl+O, Enter, Ctrl+X.
+
+4. Applica i File (Sul Master)
+bash
+sudo k3s kubectl apply -f web-app-deployment.yaml
+sudo k3s kubectl apply -f web-app-service.yaml
+Cosa fa: K8s legge YAML e crea risorse. Output: "deployment.apps/web-app created".
+
+5. Verifica Tutto Funziona (Sul Master)
+bash
+sudo k3s kubectl get pods     # Vedi pod "Running"
+sudo k3s kubectl get services # Vedi service con NodePort 30080
+sudo k3s kubectl get all      # Tutto insieme
+
+Applica il Fix
+bash
+sudo k3s kubectl delete svc web-app-service  # Rimuovi vecchio Service
+sudo k3s kubectl apply -f web-app-service.yaml  # Ricrea corretto
+
+Verifica
+bash
+sudo k3s kubectl get svc     # Vedi NodePort=30080
+curl http://localhost:30080  # Test locale sul master
+
+IMMAGINE NGINX 
+
