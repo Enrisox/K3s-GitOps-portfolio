@@ -430,3 +430,416 @@ sudo systemctl start qemu-guest-agent
 sudo systemctl status qemu-guest-agent    #controlla se sta runnando ed è enabled
 
 IMMAGINE
+
+# copia token da dare a raspberry
+sudo cat /var/lib/rancher/k3s/server/node-token
+
+# I Raspberry Pi spesso hanno i "cgroups" disabilitati di default. Senza questi, K3s non parte.
+cat /boot/firmware/cmdline.txt
+Cosa devi cercare: In fondo alla riga, devi vedere scritto: cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory
+
+Se NON ci sono:
+
+Modifica il file: sudo nano /boot/firmware/cmdline.txt
+
+sudo nano /boot/firmware/cmdline.txt
+
+sudo reboot
+
+# dopo ravvio unisci il raspberry al cluster
+
+curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.50:6443 K3S_TOKEN="K10***********token::server:token****************" sh -
+
+IMMAGINE NODI 
+
+se il comando ha successo, verifica dal master con 
+
+sudo kubectl get nodes
+
+----------------
+
+Ottima idea! È l'approccio migliore per imparare: **isolare tutto**.
+
+Creiamo un **Portfolio statico** (solo HTML e CSS) che gira su Nginx dentro Kubernetes.
+Lo terremo separato dal resto usando un nuovo sottodominio (es. `portfolio.enrisox-devops.it`) e una porta diversa (es. **30081**).
+
+Ecco il piano d'attacco DevOps:
+
+1. **Creiamo il sito** (HTML) sulla VM.
+2. **Impacchettiamo il sito** dentro Kubernetes (usando un oggetto chiamato `ConfigMap`, così non devi impazzire a creare immagini Docker per ora).
+3. **Lanciamo Nginx** che legge quel sito.
+4. **Configuriamo Caddy** sul Raspberry per puntare lì.
+
+---
+
+### FASE 1: Crea il tuo sito (Sulla VM Master)
+
+Colleghiamoci alla VM Master (`k3s-master`). Non serve essere sviluppatori web, facciamo una pagina semplice ma carina.
+
+1. Crea una cartella per il progetto:
+```bash
+mkdir -p ~/portfolio
+cd ~/portfolio
+
+```
+
+
+2. Crea il file `index.html`:
+```bash
+nano index.html
+
+```
+
+
+3. Incolla questo codice
+   
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enrico's DevOps Portfolio</title>
+    <style>
+        :root {
+            --bg-color: #0d1117; /* GitHub Dark Dimmed */
+            --card-bg: #161b22;
+            --text-main: #c9d1d9;
+            --accent: #238636; /* GitHub Green */
+            --accent-bright: #2ea043;
+            --terminal-green: #00ff00;
+        }
+        
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--terminal-green);
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #8b949e;
+            font-size: 1.1em;
+        }
+
+        .status-bar {
+            background: #21262d;
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 15px;
+            border: 1px solid #30363d;
+        }
+
+        .blink {
+            animation: blinker 1.5s linear infinite;
+            color: var(--terminal-green);
+        }
+
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+
+        /* GRIGLIA PROGETTI */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 20px;
+            transition: transform 0.2s, border-color 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+        }
+
+        .card h3 {
+            color: #58a6ff; /* GitHub Blue */
+            margin-top: 0;
+        }
+
+        .card p {
+            font-size: 0.95em;
+            color: #8b949e;
+            flex-grow: 1;
+        }
+
+        .tags {
+            margin-top: 15px;
+            font-size: 0.8em;
+        }
+
+        .tag {
+            background: #21262d;
+            color: #79c0ff;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-right: 5px;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-top: 15px;
+            background-color: var(--accent);
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-bright);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #484f58;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Enrico's DevOps Lab</h1>
+        <p class="subtitle">Cybersecurity Student | DevOps Engineer | Homelab Enthusiast</p>
+        <div class="status-bar">
+            🟢 Cluster Status: <b>Online</b> | Nodes: <b>Proxmox (Master) + Raspberry Pi (Worker)</b> | <span class="blink">_</span>
+        </div>
+    </header>
+
+    <div class="grid">
+        
+        <div class="card">
+            <div>
+                <h3>🐳 Secure Home Lab Docker</h3>
+                <p>Soluzione containerizzata per la sicurezza di rete. Include WireGuard, AdGuard, Caddy, Netdata, Fail2Ban, Crowdsec e Cloudflare DDNS.</p>
+                <div class="tags">
+                    <span class="tag">Docker</span>
+                    <span class="tag">Security</span>
+                    <span class="tag">Network</span>
+                </div>
+            </div>
+            <a href="#" class="btn">View on GitHub</a>
+        </div>
+
+        <div class="card">
+            <div>
+                <h3>🛡️ Wazuh Suricata Security Lab</h3>
+                <p>Studio e applicazione di Wazuh e le sue integrazioni (Suricata, VirusTotal) per proteggere endpoint e reti aziendali. Focus su Threat Detection.</p>
+                <div class="tags">
+                    <span class="tag">Wazuh</span>
+                    <span class="tag">Suricata</span>
+                    <span class="tag">Blue Team</span>
+                </div>
+            </div>
+            <a href="#" class="btn">View on GitHub</a>
+        </div>
+
+        <div class="card">
+            <div>
+                <h3>💾 Enterprise NAS TrueNAS</h3>
+                <p>Guida passo-passo alla configurazione di un NAS aziendale basato su TrueNAS su server Dell PowerEdge R730xd, dalla gestione hardware al pool ZFS.</p>
+                <div class="tags">
+                    <span class="tag">TrueNAS</span>
+                    <span class="tag">ZFS</span>
+                    <span class="tag">Hardware</span>
+                </div>
+            </div>
+            <a href="#" class="btn">View on GitHub</a>
+        </div>
+
+        <div class="card">
+            <div>
+                <h3>🔌 Cisco 9500 Stack</h3>
+                <p>Note di laboratorio e configurazione per costruire uno stack ridondante con due switch Cisco Catalyst 9500. High Availability networking.</p>
+                <div class="tags">
+                    <span class="tag">Cisco</span>
+                    <span class="tag">Networking</span>
+                    <span class="tag">Switching</span>
+                </div>
+            </div>
+            <a href="#" class="btn">View on GitHub</a>
+        </div>
+
+        <div class="card">
+            <div>
+                <h3>♾️ DevOps CI/CD Lab</h3>
+                <p>Pratica su strumenti e metodologie DevSecOps: automazione, gestione infrastruttura, pipeline CI/CD e containerizzazione con Jenkins, Terraform e Ansible.</p>
+                <div class="tags">
+                    <span class="tag">Jenkins</span>
+                    <span class="tag">Terraform</span>
+                    <span class="tag">Ansible</span>
+                </div>
+            </div>
+            <a href="#" class="btn">View on GitHub</a>
+        </div>
+
+        <div class="card">
+            <div>
+                <h3>☁️ AWS QuizApp Pipeline</h3>
+                <p>Pipeline CI/CD orientata al DevSecOps con GitHub Actions e Docker. Build, test, scan e deploy di una Flask App su AWS.</p>
+                <div class="tags">
+                    <span class="tag">AWS</span>
+                    <span class="tag">GitHub Actions</span>
+                    <span class="tag">DevSecOps</span>
+                </div>
+            </div>
+            <a href="#" class="btn">View on GitHub</a>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>Deployed on K3s Cluster | Managed by Portainer | Exposed via Caddy</p>
+        <p>&copy; 2026 Enrico - Cybersecurity & DevOps</p>
+    </footer>
+</div>
+
+</body>
+</html>
+
+```
+
+
+
+---
+
+### FASE 2: Carica il sito in Kubernetes (Sulla VM Master)
+
+Invece di costruire un'immagine Docker complessa, usiamo una **ConfigMap**. In pratica, diciamo a Kubernetes: *"Prendi questo file index.html e tienilo in memoria"*.
+
+1. Crea la ConfigMap dal file appena creato:
+```bash
+kubectl create configmap portfolio-html --from-file=index.html
+
+```
+
+
+2. Ora creiamo il Deployment che usa Nginx e gli "monta" dentro il tuo file HTML. Crea il file `portfolio.yaml`:
+```bash
+nano portfolio.yaml
+
+```
+
+
+3. Incolla questo (nota la porta **30081**):
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portfolio
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: portfolio
+  template:
+    metadata:
+      labels:
+        app: portfolio
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: html-volume
+          mountPath: /usr/share/nginx/html
+      volumes:
+      - name: html-volume
+        configMap:
+          name: portfolio-html
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portfolio-service
+spec:
+  selector:
+    app: portfolio
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30081
+
+```
+
+
+4. Applica tutto:
+```bash
+kubectl apply -f portfolio.yaml
+
+```
+
+### FASE 3: Configura Caddy (Sul Raspberry)
+
+Ora spostati sul Raspberry. Dobbiamo dire a Caddy: *"Se qualcuno cerca `portfolio.enrisox-devops.it`, mandalo alla porta 30081"*.
+
+1. Modifica il Caddyfile:
+```bash
+nano ~/caddy/config/Caddyfile
+# (O dove lo tieni tu)
+
+```
+
+2. Aggiungi questo blocco alla fine (sostituisci sempre con l'IP LAN del Raspberry):
+```caddyfile
+portfolio.enrisox-devops.it {
+    reverse_proxy 192.168.1.XX:30081
+}
+
+```
+
+3. Riavvia Caddy (via Docker o Portainer).
+
+docker restart caddy
+---
+
+### FASE 4: DNS e Test
+
+1. Vai sul tuo provider DNS.
+2. Crea un nuovo record **A** (sottodominio `portfolio`) che punta al tuo IP pubblico di casa.
+3. Aspetta qualche minuto e visita `https://portfolio.enrisox-devops.it`.
+
+Dovresti vedere la tua pagina nera e verde stile "Hacker" con l'elenco dei tuoi progetti! 😎
+ 
