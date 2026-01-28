@@ -359,3 +359,74 @@ sudo k3s kubectl get endpointslices -l kubernetes.io/service-name=web-app-servic
 
 sudo k3s kubectl exec pod/web-app-b4f479ccd-48x5s -- cat /var/log/nginx/access.log | tail -5
 
+
+
+rifaccio da zero..
+-------------------------------------------------------
+creo k3s master clonando il templete e cambiando le impostaizoni
+
+qm clone 100 103 --name k3s-master --full && \
+qm set 103 --cores 2 --memory 4096 --cpu host && \
+qm resize 103 scsi0 +32G
+
+1. Prepara la Chiave SSH su Proxmox
+Per passare la chiave via comando, Proxmox deve leggere un file. Crea un file temporaneo con la tua chiave pubblica (quella che hai sul tuo PC in id_rsa.pub):
+
+Bash
+# Sulla shell di Proxmox
+nano /root/chiave.pub
+# INCOLLA DENTRO LA TUA CHIAVE PUBBLICA (inizia con ssh-rsa...)
+# Salva con CTRL+X, Y, Invio
+2. Lancia i comandi di configurazione (tutti insieme)
+Sostituisci l'IP che vuoi dare al Master (es. 192.168.1.50) e il Gateway del tuo router (es. 192.168.1.1).
+
+Bash
+# Configura il drive Cloud-Init
+qm set 103 --ide2 local-lvm:cloudinit
+
+# Utente e Password
+qm set 103 --ciuser ubuntu
+qm set 103 --cipassword "passwordsegreta" 
+
+# Chiave SSH (prende il file creato prima)
+qm set 103 --sshkeys /root/chiave.pub
+
+# Rete: IP Statico e Gateway (ADATTA GLI IP!)
+qm set 103 --ipconfig0 ip=192.168.1.50/24,gw=192.168.1.1
+
+# Abilita l'agente QEMU (per vedere IP e info su Proxmox)
+qm set 103 --agent enabled=1
+
+3. Rigenera e Avvia
+Per applicare le modifiche all'immagine ISO virtuale di Cloud-Init e avviare:
+
+Bash
+qm cloudinit update 103
+qm start 103
+
+ok ora sono dentro in ssh alla vm 103 tramite key auth..
+
+# Aggiorna il sistema e installa agente sul nodo master
+
+sudo apt update && sudo apt upgrade -y
+sudo apt install qemu-guest-agent -y
+
+# Disabilita il firewall di Ubuntu (per evitare mal di testa con le porte di K3s)
+sudo ufw disable
+
+## Installazione di K3s (Senza Traefik)
+Questo è il comando chiave. Come abbiamo deciso, disabilitiamo Traefik perché useremo Caddy (sul Raspberry) e NodePort per gestire il traffico. Se lasciassimo Traefik, occuperebbe le porte e farebbe conflitto.
+
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -
+
+Di default, k3s richiede sudo per ogni comando kubectl. È noioso. Per usare kubectl senza sudo, lancia questo comando:
+
+Bash
+sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+
+## abilita qemu agent sulla vm master
+sudo systemctl enable qemu-guest-agent
+sudo systemctl start qemu-guest-agent
+sudo systemctl status qemu-guest-agent    #controlla se sta runnando ed è enabled
+
+IMMAGINE
