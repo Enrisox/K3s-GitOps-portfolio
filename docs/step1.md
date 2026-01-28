@@ -363,102 +363,139 @@ sudo k3s kubectl exec pod/web-app-b4f479ccd-48x5s -- cat /var/log/nginx/access.l
 
 rifaccio da zero..
 -------------------------------------------------------
-creo k3s master clonando il templete e cambiando le impostaizoni
+# creo k3s master clonando il templete e cambiando le impostaizoni
 
+```bash
 qm clone 100 103 --name k3s-master --full && \
 qm set 103 --cores 2 --memory 4096 --cpu host && \
 qm resize 103 scsi0 +32G
+```
 
-1. Prepara la Chiave SSH su Proxmox
-Per passare la chiave via comando, Proxmox deve leggere un file. Crea un file temporaneo con la tua chiave pubblica (quella che hai sul tuo PC in id_rsa.pub):
+**1. Prepara la Chiave SSH su Proxmox**
+Per passare la chiave via comando, Proxmox deve leggere un file. Crea un file temporaneo con la tua chiave pubblica 
 
-Bash
+
 # Sulla shell di Proxmox
+```bash
 nano /root/chiave.pub
+```
+
 # INCOLLA DENTRO LA TUA CHIAVE PUBBLICA (inizia con ssh-rsa...)
 # Salva con CTRL+X, Y, Invio
 2. Lancia i comandi di configurazione (tutti insieme)
 Sostituisci l'IP che vuoi dare al Master (es. 192.168.1.50) e il Gateway del tuo router (es. 192.168.1.1).
 
-Bash
+
 # Configura il drive Cloud-Init
+
+```bash
 qm set 103 --ide2 local-lvm:cloudinit
+```
 
 # Utente e Password
+```bash
+
 qm set 103 --ciuser ubuntu
 qm set 103 --cipassword "passwordsegreta" 
-
+```
 # Chiave SSH (prende il file creato prima)
+```bash
 qm set 103 --sshkeys /root/chiave.pub
+```
 
 # Rete: IP Statico e Gateway (ADATTA GLI IP!)
+
+```bash
 qm set 103 --ipconfig0 ip=192.168.1.50/24,gw=192.168.1.1
+```
 
 # Abilita l'agente QEMU (per vedere IP e info su Proxmox)
+```bash
 qm set 103 --agent enabled=1
+```
 
 3. Rigenera e Avvia
 Per applicare le modifiche all'immagine ISO virtuale di Cloud-Init e avviare:
 
-Bash
+```bash
 qm cloudinit update 103
 qm start 103
+```
 
 ok ora sono dentro in ssh alla vm 103 tramite key auth..
 
 # Aggiorna il sistema e installa agente sul nodo master
 
+```bash
 sudo apt update && sudo apt upgrade -y
 sudo apt install qemu-guest-agent -y
+```
 
 # Disabilita il firewall di Ubuntu (per evitare mal di testa con le porte di K3s)
+
+```bash
 sudo ufw disable
+```
 
 ## Installazione di K3s (Senza Traefik)
 Questo è il comando chiave. Come abbiamo deciso, disabilitiamo Traefik perché useremo Caddy (sul Raspberry) e NodePort per gestire il traffico. Se lasciassimo Traefik, occuperebbe le porte e farebbe conflitto.
-
+```bash
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -
+```
 
 Di default, k3s richiede sudo per ogni comando kubectl. È noioso. Per usare kubectl senza sudo, lancia questo comando:
 
-Bash
+```bash
 sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+```
 
 ## abilita qemu agent sulla vm master
+```bash
 sudo systemctl enable qemu-guest-agent
 sudo systemctl start qemu-guest-agent
 sudo systemctl status qemu-guest-agent    #controlla se sta runnando ed è enabled
+```
 
 IMMAGINE
 
 # copia token da dare a raspberry
+
+```bash
 sudo cat /var/lib/rancher/k3s/server/node-token
+```
 
 # I Raspberry Pi spesso hanno i "cgroups" disabilitati di default. Senza questi, K3s non parte.
+
+```bash
 cat /boot/firmware/cmdline.txt
-Cosa devi cercare: In fondo alla riga, devi vedere scritto: cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory
+```
+
+Cosa cercare: In fondo alla riga, devi vedere scritto: cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory
 
 Se NON ci sono:
 
 Modifica il file: sudo nano /boot/firmware/cmdline.txt
 
+```bash
 sudo nano /boot/firmware/cmdline.txt
-
 sudo reboot
+```
 
 # dopo ravvio unisci il raspberry al cluster
 
+```bash
 curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.50:6443 K3S_TOKEN="K10***********token::server:token****************" sh -
+```
 
 IMMAGINE NODI 
 
 se il comando ha successo, verifica dal master con 
 
+```bash
 sudo kubectl get nodes
+```
 
-----------------
 
-Ottima idea! È l'approccio migliore per imparare: **isolare tutto**.
 
 Creiamo un **Portfolio statico** (solo HTML e CSS) che gira su Nginx dentro Kubernetes.
 Lo terremo separato dal resto usando un nuovo sottodominio (es. `portfolio.enrisox-devops.it`) e una porta diversa (es. **30081**).
@@ -474,9 +511,9 @@ Ecco il piano d'attacco DevOps:
 
 ### FASE 1: Crea il tuo sito (Sulla VM Master)
 
-Colleghiamoci alla VM Master (`k3s-master`). Non serve essere sviluppatori web, facciamo una pagina semplice ma carina.
-
+Colleghiamoci alla VM Master
 1. Crea una cartella per il progetto:
+
 ```bash
 mkdir -p ~/portfolio
 cd ~/portfolio
@@ -489,258 +526,6 @@ cd ~/portfolio
 nano index.html
 
 ```
-
-
-3. Incolla questo codice
-   
-```html
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enrico's DevOps Portfolio</title>
-    <style>
-        :root {
-            --bg-color: #0d1117; /* GitHub Dark Dimmed */
-            --card-bg: #161b22;
-            --text-main: #c9d1d9;
-            --accent: #238636; /* GitHub Green */
-            --accent-bright: #2ea043;
-            --terminal-green: #00ff00;
-        }
-        
-        body {
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 50px;
-            border-bottom: 1px solid #30363d;
-            padding-bottom: 20px;
-        }
-
-        h1 {
-            color: var(--terminal-green);
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            color: #8b949e;
-            font-size: 1.1em;
-        }
-
-        .status-bar {
-            background: #21262d;
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            margin-top: 15px;
-            border: 1px solid #30363d;
-        }
-
-        .blink {
-            animation: blinker 1.5s linear infinite;
-            color: var(--terminal-green);
-        }
-
-        @keyframes blinker {
-            50% { opacity: 0; }
-        }
-
-        /* GRIGLIA PROGETTI */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .card {
-            background-color: var(--card-bg);
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            padding: 20px;
-            transition: transform 0.2s, border-color 0.2s;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent);
-        }
-
-        .card h3 {
-            color: #58a6ff; /* GitHub Blue */
-            margin-top: 0;
-        }
-
-        .card p {
-            font-size: 0.95em;
-            color: #8b949e;
-            flex-grow: 1;
-        }
-
-        .tags {
-            margin-top: 15px;
-            font-size: 0.8em;
-        }
-
-        .tag {
-            background: #21262d;
-            color: #79c0ff;
-            padding: 2px 8px;
-            border-radius: 10px;
-            margin-right: 5px;
-            display: inline-block;
-            margin-bottom: 5px;
-        }
-
-        .btn {
-            display: inline-block;
-            margin-top: 15px;
-            background-color: var(--accent);
-            color: white;
-            padding: 8px 16px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .btn:hover {
-            background-color: var(--accent-bright);
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 50px;
-            color: #484f58;
-            font-size: 0.8em;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <header>
-        <h1>Enrico's DevOps Lab</h1>
-        <p class="subtitle">Cybersecurity Student | DevOps Engineer | Homelab Enthusiast</p>
-        <div class="status-bar">
-            🟢 Cluster Status: <b>Online</b> | Nodes: <b>Proxmox (Master) + Raspberry Pi (Worker)</b> | <span class="blink">_</span>
-        </div>
-    </header>
-
-    <div class="grid">
-        
-        <div class="card">
-            <div>
-                <h3>🐳 Secure Home Lab Docker</h3>
-                <p>Soluzione containerizzata per la sicurezza di rete. Include WireGuard, AdGuard, Caddy, Netdata, Fail2Ban, Crowdsec e Cloudflare DDNS.</p>
-                <div class="tags">
-                    <span class="tag">Docker</span>
-                    <span class="tag">Security</span>
-                    <span class="tag">Network</span>
-                </div>
-            </div>
-            <a href="#" class="btn">View on GitHub</a>
-        </div>
-
-        <div class="card">
-            <div>
-                <h3>🛡️ Wazuh Suricata Security Lab</h3>
-                <p>Studio e applicazione di Wazuh e le sue integrazioni (Suricata, VirusTotal) per proteggere endpoint e reti aziendali. Focus su Threat Detection.</p>
-                <div class="tags">
-                    <span class="tag">Wazuh</span>
-                    <span class="tag">Suricata</span>
-                    <span class="tag">Blue Team</span>
-                </div>
-            </div>
-            <a href="#" class="btn">View on GitHub</a>
-        </div>
-
-        <div class="card">
-            <div>
-                <h3>💾 Enterprise NAS TrueNAS</h3>
-                <p>Guida passo-passo alla configurazione di un NAS aziendale basato su TrueNAS su server Dell PowerEdge R730xd, dalla gestione hardware al pool ZFS.</p>
-                <div class="tags">
-                    <span class="tag">TrueNAS</span>
-                    <span class="tag">ZFS</span>
-                    <span class="tag">Hardware</span>
-                </div>
-            </div>
-            <a href="#" class="btn">View on GitHub</a>
-        </div>
-
-        <div class="card">
-            <div>
-                <h3>🔌 Cisco 9500 Stack</h3>
-                <p>Note di laboratorio e configurazione per costruire uno stack ridondante con due switch Cisco Catalyst 9500. High Availability networking.</p>
-                <div class="tags">
-                    <span class="tag">Cisco</span>
-                    <span class="tag">Networking</span>
-                    <span class="tag">Switching</span>
-                </div>
-            </div>
-            <a href="#" class="btn">View on GitHub</a>
-        </div>
-
-        <div class="card">
-            <div>
-                <h3>♾️ DevOps CI/CD Lab</h3>
-                <p>Pratica su strumenti e metodologie DevSecOps: automazione, gestione infrastruttura, pipeline CI/CD e containerizzazione con Jenkins, Terraform e Ansible.</p>
-                <div class="tags">
-                    <span class="tag">Jenkins</span>
-                    <span class="tag">Terraform</span>
-                    <span class="tag">Ansible</span>
-                </div>
-            </div>
-            <a href="#" class="btn">View on GitHub</a>
-        </div>
-
-        <div class="card">
-            <div>
-                <h3>☁️ AWS QuizApp Pipeline</h3>
-                <p>Pipeline CI/CD orientata al DevSecOps con GitHub Actions e Docker. Build, test, scan e deploy di una Flask App su AWS.</p>
-                <div class="tags">
-                    <span class="tag">AWS</span>
-                    <span class="tag">GitHub Actions</span>
-                    <span class="tag">DevSecOps</span>
-                </div>
-            </div>
-            <a href="#" class="btn">View on GitHub</a>
-        </div>
-
-    </div>
-
-    <footer>
-        <p>Deployed on K3s Cluster | Managed by Portainer | Exposed via Caddy</p>
-        <p>&copy; 2026 Enrico - Cybersecurity & DevOps</p>
-    </footer>
-</div>
-
-</body>
-</html>
-
-```
-
-
-
----
 
 ### FASE 2: Carica il sito in Kubernetes (Sulla VM Master)
 
@@ -833,32 +618,31 @@ spec:
 
 ```
 
-
 4. Applica tutto:
 ```bash
 kubectl apply -f portfolio.yaml
-
 ```
-Sicurezza del Container (Pod Security)
-Queste regole impediscono a un attaccante di prendere il controllo del sistema anche se riuscisse a entrare nel container.
+## Sicurezza del Container (Pod Security)
+**Queste regole impediscono a un attaccante di prendere il controllo del sistema anche se riuscisse a entrare nel container.**
 
-Non-Root (Rootless): Il container gira con l'utente UID 101 (nginx) invece che root (0). Se un attaccante esegue codice remoto, non ha permessi di amministratore.
+- **Non-Root (Rootless)**: Il container gira con l'utente UID 101 (nginx) invece che root (0). Se un attaccante esegue codice remoto, non ha permessi di amministratore.
 
-Drop Capabilities: Abbiamo rimosso TUTTI i privilegi Linux (capabilities: drop: ["ALL"]). Il processo non può cambiare permessi ai file, manipolare la rete o gestire processi di sistema.
+- **Drop Capabilities**: Abbiamo rimosso TUTTI i privilegi Linux (capabilities: drop: ["ALL"]). Il processo non può cambiare permessi ai file, manipolare la rete o gestire processi di sistema.
 
-No Privilege Escalation: Abbiamo bloccato la possibilità per il processo di guadagnare più privilegi di quelli che ha (allowPrivilegeEscalation: false). Blocca attacchi basati su binari SUID (es. sudo).
+- **No Privilege Escalation**: Abbiamo bloccato la possibilità per il processo di guadagnare più privilegi di quelli che ha (allowPrivilegeEscalation: false). Blocca attacchi basati su binari SUID (es. sudo).
 
-Seccomp Profile: Abbiamo attivato il filtro RuntimeDefault che blocca le chiamate al Kernel (syscall) non necessarie o pericolose, riducendo la superficie di attacco verso l'host.
+- **Seccomp Profile**: Abbiamo attivato il filtro RuntimeDefault che blocca le chiamate al Kernel (syscall) non necessarie o pericolose, riducendo la superficie di attacco verso l'host.
 
-2. Sicurezza del Filesystem
-Read-Only Root Filesystem: L'intero sistema operativo del container è in sola lettura.
+**2. Sicurezza del Filesystem**
 
-Effetto: Un attaccante non può scaricare malware, non può modificare configurazioni, non può creare backdoor persistenti.
+- **Read-Only Root Filesystem**: L'intero sistema operativo del container è in sola lettura.
 
-Eccezione gestita: Abbiamo montato volumi temporanei (emptyDir) solo su /tmp e /var/cache perché Nginx ne ha bisogno per vivere, ma quei dati spariscono al riavvio.
+- **Effetto**: Un attaccante non può scaricare malware, non può modificare configurazioni, non può creare backdoor persistenti.
 
-3. Protezione dalle risorse (Anti-DoS)
-Resource Limits: Abbiamo imposto limiti rigidi:
+- **Eccezione gestita**: Abbiamo montato volumi temporanei (emptyDir) solo su /tmp e /var/cache perché Nginx ne ha bisogno per vivere, ma quei dati spariscono al riavvio.
+
+**3. Protezione dalle risorse (Anti-DoS)**
+Resource Limits: Ho imposto limiti rigidi:
 
 - CPU: Max 0.1 core (100m).
 - RAM: Max 128 MiB.
@@ -870,7 +654,7 @@ Resource Limits: Abbiamo imposto limiti rigidi:
 500m = Mezzo Core (50% di potenza).
 100m = Un decimo di Core (10% di potenza).
 
-Cosa abbiamo fatto noi? Impostando limit: 100m, abbiamo detto a Kubernetes: "Questo container Nginx può usare al massimo il 10% della potenza di un singolo core del Raspberry Pi."
+Cosa ho fatto io? Impostando limit: 100m, ho detto a Kubernetes: "Questo container Nginx può usare al massimo il 10% della potenza di un singolo core del Raspberry Pi."
 
 Se il sito riceve troppe visite e Nginx prova a usare più potenza (es. il 50%), Kubernetes lo "strozza" (Throttling) e lo costringe a restare dentro il suo 10%. Il sito andrà lento, ma non bloccherà il resto del Raspberry Pi.
 Effetto: Se qualcuno bombarda il sito di richieste (DoS), il pod muore o rallenta, ma non blocca il Raspberry Pi o la VM Master. Il resto del cluster sopravvive.
@@ -890,24 +674,24 @@ Queste misure proteggono chi visita il tuo sito (i client).
 
 ### FASE 3: Configura Caddy (Sul Raspberry)
 
-Ora spostati sul Raspberry. Dobbiamo dire a Caddy: *"Se qualcuno cerca `portfolio.enrisox-devops.it`, mandalo alla porta 30081"*.
+Sul nodo worker,diciamo a Caddy: *"Se qualcuno cerca `portfolio.enrisox-devops.it`, mandalo alla porta 30081"*.
 
-1. Modifica il Caddyfile:
+**1. Modifica il Caddyfile:**
 ```bash
 nano Caddyfile
-
 ```
+**2. Aggiungi questo blocco alla fine (sostituisci sempre con l'IP LAN del Raspberry):**
 
-2. Aggiungi questo blocco alla fine (sostituisci sempre con l'IP LAN del Raspberry):
-```caddyfile
+```bash
 portfolio.enrisox-devops.it {
     reverse_proxy 192.168.1.XX:30081
 }
 
 ```
 
-3. Riavvia Caddy (via Docker o Portainer).
+**3. Riavvia Caddy.**
 
+```bash
 docker restart caddy
 ---
 
@@ -918,5 +702,26 @@ docker restart caddy
 3. Aspetta qualche minuto e visita `https://portfolio.enrisox-devops.it`.
 
 Dovresti vedere la tua pagina nera e verde stile "Hacker" con l'elenco dei tuoi progetti! 😎
- 
+
+```bash
 kubectl get pods
+kubectl get pods -o wide
+```
+
+# La Procedura di Aggiornamento file index.html
+Ogni volta che modifichi l'HTML, devi lanciare questi comandi sulla VM Master:
+
+Modifica il file: nano index.html (incolla il nuovo codice e salva).
+
+Aggiorna la "fotocopia" (ConfigMap):
+
+```bash
+
+kubectl delete configmap portfolio-html
+kubectl create configmap portfolio-html --from-file=index.html
+kubectl rollout restart deployment portfolio    #Riavvia i Pod per fargli leggere la novità
+```
+
+
+
+
