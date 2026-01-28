@@ -776,18 +776,47 @@ spec:
       labels:
         app: portfolio
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: nginx
-        image: nginx:alpine
+        image: nginxinc/nginx-unprivileged:alpine
         ports:
-        - containerPort: 80
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          privileged: false
+          capabilities:
+            drop:
+              - ALL
         volumeMounts:
         - name: html-volume
           mountPath: /usr/share/nginx/html
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: cache-volume
+          mountPath: /var/cache/nginx
       volumes:
       - name: html-volume
         configMap:
           name: portfolio-html
+      - name: tmp-volume
+        emptyDir: {}
+      - name: cache-volume
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -799,7 +828,7 @@ spec:
   type: NodePort
   ports:
     - port: 80
-      targetPort: 80
+      targetPort: 8080
       nodePort: 30081
 
 ```
@@ -810,6 +839,54 @@ spec:
 kubectl apply -f portfolio.yaml
 
 ```
+Sicurezza del Container (Pod Security)
+Queste regole impediscono a un attaccante di prendere il controllo del sistema anche se riuscisse a entrare nel container.
+
+Non-Root (Rootless): Il container gira con l'utente UID 101 (nginx) invece che root (0). Se un attaccante esegue codice remoto, non ha permessi di amministratore.
+
+Drop Capabilities: Abbiamo rimosso TUTTI i privilegi Linux (capabilities: drop: ["ALL"]). Il processo non può cambiare permessi ai file, manipolare la rete o gestire processi di sistema.
+
+No Privilege Escalation: Abbiamo bloccato la possibilità per il processo di guadagnare più privilegi di quelli che ha (allowPrivilegeEscalation: false). Blocca attacchi basati su binari SUID (es. sudo).
+
+Seccomp Profile: Abbiamo attivato il filtro RuntimeDefault che blocca le chiamate al Kernel (syscall) non necessarie o pericolose, riducendo la superficie di attacco verso l'host.
+
+2. Sicurezza del Filesystem
+Read-Only Root Filesystem: L'intero sistema operativo del container è in sola lettura.
+
+Effetto: Un attaccante non può scaricare malware, non può modificare configurazioni, non può creare backdoor persistenti.
+
+Eccezione gestita: Abbiamo montato volumi temporanei (emptyDir) solo su /tmp e /var/cache perché Nginx ne ha bisogno per vivere, ma quei dati spariscono al riavvio.
+
+3. Protezione dalle risorse (Anti-DoS)
+Resource Limits: Abbiamo imposto limiti rigidi:
+
+- CPU: Max 0.1 core (100m).
+- RAM: Max 128 MiB.
+
+**CPU: Cosa vuol dire "100m"?**
+**In Kubernetes, 1 CPU equivale a 1 Core fisico (o virtuale) del processore. Per essere precisi, Kubernetes divide ogni Core in 1000 millicores (da qui la "m").**
+
+1000m = 1 Core intero (100% di potenza).
+500m = Mezzo Core (50% di potenza).
+100m = Un decimo di Core (10% di potenza).
+
+Cosa abbiamo fatto noi? Impostando limit: 100m, abbiamo detto a Kubernetes: "Questo container Nginx può usare al massimo il 10% della potenza di un singolo core del Raspberry Pi."
+
+Se il sito riceve troppe visite e Nginx prova a usare più potenza (es. il 50%), Kubernetes lo "strozza" (Throttling) e lo costringe a restare dentro il suo 10%. Il sito andrà lento, ma non bloccherà il resto del Raspberry Pi.
+Effetto: Se qualcuno bombarda il sito di richieste (DoS), il pod muore o rallenta, ma non blocca il Raspberry Pi o la VM Master. Il resto del cluster sopravvive.
+
+4. **Sicurezza di Rete & Client (Caddy Headers)**
+Queste misure proteggono chi visita il tuo sito (i client).
+
+- X-Frame-Options "DENY": Nessuno può incorporare il tuo sito in un <iframe> (protegge dal Clickjacking).
+
+- X-Content-Type-Options "nosniff": Impedisce al browser di eseguire file camuffati (es. un .txt che in realtà è uno script maligno).
+
+- X-XSS-Protection: Attiva i filtri anti-scripting dei browser vecchi.
+
+- Strict-Transport-Security (HSTS): Forza il browser a usare sempre e solo HTTPS, prevenendo attacchi Man-in-the-Middle.
+
+- Server Token Removal (-Server): Nascondiamo al mondo che stiamo usando "Caddy". Meno informazioni diamo agli attaccanti, meglio è (Security by Obscurity, come strato aggiuntivo).
 
 ### FASE 3: Configura Caddy (Sul Raspberry)
 
@@ -817,8 +894,7 @@ Ora spostati sul Raspberry. Dobbiamo dire a Caddy: *"Se qualcuno cerca `portfoli
 
 1. Modifica il Caddyfile:
 ```bash
-nano ~/caddy/config/Caddyfile
-# (O dove lo tieni tu)
+nano Caddyfile
 
 ```
 
@@ -843,3 +919,4 @@ docker restart caddy
 
 Dovresti vedere la tua pagina nera e verde stile "Hacker" con l'elenco dei tuoi progetti! 😎
  
+kubectl get pods
