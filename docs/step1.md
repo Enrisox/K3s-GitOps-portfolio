@@ -578,8 +578,8 @@ spec:
             memory: "64Mi"
             cpu: "50m"
           limits:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "500m"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -644,8 +644,8 @@ kubectl apply -f portfolio.yaml
 **3. Protezione dalle risorse (Anti-DoS)**
 Resource Limits: Ho imposto limiti rigidi:
 
-- CPU: Max 0.1 core (100m).
-- RAM: Max 128 MiB.
+- CPU: Max 0.5 core (500m).
+- RAM: Max 256 MiB.
 
 **CPU: Cosa vuol dire "100m"?**
 **In Kubernetes, 1 CPU equivale a 1 Core fisico (o virtuale) del processore. Per essere precisi, Kubernetes divide ogni Core in 1000 millicores (da qui la "m").**
@@ -722,6 +722,8 @@ kubectl create configmap portfolio-html --from-file=index.html
 kubectl rollout restart deployment portfolio    #Riavvia i Pod per fargli leggere la novità
 ```
 
-
-
+comando per applicare modifiche fatte al file .yaml
+```bash
+kubectl apply -f portfolio.yaml
+```
 
