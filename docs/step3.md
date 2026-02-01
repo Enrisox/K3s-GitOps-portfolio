@@ -133,5 +133,15 @@ In Kubernetes, se modifichi una ConfigMap, i Pod già in esecuzione non se ne ac
 Il **comando Rollout Restart** comando ordina a Kubernetes di ricreare tutti i Pod del deployment seguendo la strategia definita:
 
 ```bash
-kubectl rollout restart deployment portfolio
+kubectl rollout restart deployment portfolio && kubectl rollout status deployment portfolio         #per vedere lo stato in diretta
 ```
+IMMAGINE restart
+
+## Processo in background
+
+- **Creazione (Surge)**: Grazie a maxSurge: 1, Kubernetes crea un terzo Pod aggiornato.
+- **Test di Readiness**: Il nuovo Pod viene messo "in prova". Solo dopo che la readinessProbe dà esito positivo (il sito risponde), il Pod è considerato pronto.
+- **Sostituzione**: Kubernetes inizia a terminare uno dei vecchi Pod.
+- **Continuità**: La procedura si ripete finché tutti i vecchi Pod non sono sostituiti.
+- **Risultato finale**: Durante tutto il processo, il traffico gestito da Caddy viene indirizzato solo ai Pod sani. L'utente non percepirà alcuna interruzione (Zero-Downtime).
+
