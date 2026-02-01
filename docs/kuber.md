@@ -38,30 +38,26 @@ Invece di accendere la VM e configurare IP, utenti e password a mano nel termina
 
 
 Per passare la chiave via comando, Proxmox deve leggere un file. Crea un file temporaneo con la tua chiave pubblica. Sulla shell di Proxmox:
-
-`nano /root/chiave.pub`
+```bash
+nano /root/chiave.pub
+```
 
 **INCOLLA DENTRO LA TUA CHIAVE PUBBLICA**
 
 ### Configurazione Cloud-Init
 
 **Configurare il drive Cloud-Init**
-`qm set 103 --ide2 local-lvm:cloudinit`
 
-**Utente e Password**
-`qm set 103 --ciuser ubuntu`
-`qm set 103 --cipassword "************"`
+```bash
+qm set 103 --ide2 local-lvm:cloudinit \
+--ciuser ubuntu \
+--cipassword "************" \
+--sshkeys /root/chiave.pub \
+--ipconfig0 ip=192.168.1.X/24,gw=192.168.1.1 \
+--agent enabled=1
+```
 
-**Chiave SSH (prende il file creato prima)**
-`qm set 103 --sshkeys /root/chiave.pub`
-
-**Rete: IP Statico e Gateway**
-`qm set 103 --ipconfig0 ip=192.168.1.X/24,gw=192.168.1.1`
-
-**Abilitare l'agente QEMU (per vedere IP e info su Proxmox)**
-`qm set 103 --agent enabled=1`
-
-**Rigenera e avvia la VM master**
+**Rigenerare e avviare la VM master**
 
 ```bash
 qm cloudinit update 103
@@ -70,9 +66,7 @@ qm start 103
 
 ## Configurazione VM Master
 
-Una volta fatto accesso in ssh alla vm 103 tramite key auth:
-
-### Ho aggiornato il sistema e installato agente sul nodo K3S master  ( prima avevo solo abilitato, non installato)
+Una volta fatto accesso in ssh alla vm 103 tramite key auth ho aggiornato il sistema e installato agente sul nodo K3S master  ( prima era stato solamente abilitato, non installato)
 
 ```bash
 sudo apt update && sudo apt upgrade -y
@@ -80,23 +74,30 @@ sudo apt install qemu-guest-agent -y
 
 ```
 
-### Disabilire il firewall di Ubuntu(solo in ambiente di test)
+## Disabilire il firewall di Ubuntu (solo in ambiente di test)
+
 - **Iptables**: K3s installa delle regole molto specifiche per far parlare i container tra loro. Se ufw è attivo, potrebbe sovrascrivere o bloccare i pacchetti che passano per l'interfaccia virtuale di K3s (cni0 o flannel), rendendo i tuoi Pod isolati dal mondo.
 - **Porte necessarie** K3s ha bisogno di molte porte aperte (6443 per l'API, 10250 per il Kubelet, porte per il traffico VXLAN, ecc.). Invece di aprirle una per una rischiando di dimenticarne una e impazzire con i log, si disabilita il firewall dell'host, dato che la sicurezza dovrebbe essere gestita a un livello superiore (es. i Security Groups del cloud o il firewall del router).
 
-`sudo ufw disable`
+```bash
+sudo ufw disable`
+```
 
-### Installazione di K3s (Senza Traefik)
+## Installazione di K3s (Senza Traefik)
 
 Ho scelto di disabilitare **Traefik**, un Reverse Proxy compreso in K3S, perché era già presente un **container Caddy** nell'infrastruttura del mio homelab e **NodePort** per gestire il traffico. Se avessi lasciato Traefik, mi avrebbe occupato le porte e fatto conflitto.
 **NodePort**:È un oggetto di configurazione di Kubernetes che espone un servizio su una porta statica.
 Apre una porta specifica (range 30000-32767) su tutte le interfacce di rete di ogni singolo nodo del cluster (Master e Worker).
 Mappa una porta esterna alla porta interna del container (targetPort), rendendo il servizio raggiungibile tramite l'IP della macchina fisica/VM.
 
-`curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -`
+```bash
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -`
+```
 
 **Di default, k3s richiede sudo per ogni comando kubectl. Per usare kubectl senza sudo, usiamo questo comando:**
-`sudo chmod 644 /etc/rancher/k3s/k3s.yaml`
+```bash
+sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+```
 
 ### Abilitare qemu agent sulla vm master
 
@@ -110,33 +111,40 @@ sudo systemctl status qemu-guest-agent
 ## Setup Nodo worker sul Raspberry Pi
 
 ### Copia token da dare a raspberry
+```bash
+sudo cat /var/lib/rancher/k3s/server/node-token         #Copia token da dare a raspberry
+```
 
-`sudo cat /var/lib/rancher/k3s/server/node-token`
-
-### Configurazione Cgroups
+## Configurazione Cgroups
 
 **I Raspberry Pi spesso hanno i "cgroups" disabilitati di default. Senza questi, K3s non parte.**
 
-`cat /boot/firmware/cmdline.txt`
+```bash
+cat /boot/firmware/cmdline.txt
+```
 
 Cosa cercare?: In fondo alla riga, deve esserci scritto: **`cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory`**
 
 Se NON ci sono:
 
-1. sudo nano /boot/firmware/cmdline.txt`
-2. sudo reboot
+```bash
+sudo nano /boot/firmware/cmdline.txt`
+sudo reboot
+```
 
 ### Unire il raspberry al cluster
 
 Dopo il reboot:
 
-`curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.X:6443 K3S_TOKEN="K10***********token::server:token****************" sh -`
+```bash
+curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.X:6443 K3S_TOKEN="K10***********token::server:token****************" sh -
+```
+
 
 **Verificare dal nodo master:**
 
-`sudo kubectl get nodes`
+```bash
+sudo kubectl get nodes`
+```
 
-## Deployment Applicazione: Portfolio su sito web
-
-Per sperimentare con il load balancing tra i nodi ho creato un sito web Portfolio che gira su Nginx dentro Kubernetes. 
 
