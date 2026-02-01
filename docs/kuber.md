@@ -36,7 +36,6 @@ qm resize 103 scsi0 +32G
 
 Invece di accendere la VM e configurare IP, utenti e password a mano nel terminal della console, ho usato **Cloud-Init** per "iniettare" queste impostazioni dall'esterno mentre la macchina si avvia.
 
-### 1. Preparare la Chiave SSH su Proxmox
 
 Per passare la chiave via comando, Proxmox deve leggere un file. Crea un file temporaneo con la tua chiave pubblica. Sulla shell di Proxmox:
 
@@ -45,41 +44,35 @@ Per passare la chiave via comando, Proxmox deve leggere un file. Crea un file te
 **INCOLLA DENTRO LA TUA CHIAVE PUBBLICA**
 
 ### Configurazione Cloud-Init
-Il template non può avere IP statico (altrimenti tutti i cloni avrebbero lo stesso IP = conflitto).
-Lancia i comandi di configurazione (tutti insieme). Sostituisci l'IP che vuoi dare al Master (es. 192.168.1.50) e il Gateway del tuo router (es. 192.168.1.1).
 
-**Configura il drive Cloud-Init**
+**Configurare il drive Cloud-Init**
 `qm set 103 --ide2 local-lvm:cloudinit`
 
 **Utente e Password**
 `qm set 103 --ciuser ubuntu`
-`qm set 103 --cipassword "passwordsegreta"`
+`qm set 103 --cipassword "************"`
 
 **Chiave SSH (prende il file creato prima)**
 `qm set 103 --sshkeys /root/chiave.pub`
 
-**Rete: IP Statico e Gateway (ADATTA GLI IP!)**
-`qm set 103 --ipconfig0 ip=192.168.1.50/24,gw=192.168.1.1`
+**Rete: IP Statico e Gateway**
+`qm set 103 --ipconfig0 ip=192.168.1.X/24,gw=192.168.1.1`
 
-**Abilita l'agente QEMU (per vedere IP e info su Proxmox)**
+**Abilitare l'agente QEMU (per vedere IP e info su Proxmox)**
 `qm set 103 --agent enabled=1`
 
-**Rigenera e Avvia**
-Per applicare le modifiche all'immagine ISO virtuale di Cloud-Init e avviare:
+**Rigenera e avvia la VM master**
 
 ```bash
 qm cloudinit update 103
 qm start 103
-
 ```
 
----
+## Configurazione VM Master
 
-## Configurazione Interna VM Master
+Una volta fatto accesso in ssh alla vm 103 tramite key auth:
 
-Ok ora sono dentro in ssh alla vm 103 tramite key auth..
-
-### Aggiorna il sistema e installa agente sul nodo master
+### Ho aggiornato il sistema e installato agente sul nodo K3S master  ( prima avevo solo abilitato, non installato)
 
 ```bash
 sudo apt update && sudo apt upgrade -y
@@ -87,31 +80,34 @@ sudo apt install qemu-guest-agent -y
 
 ```
 
-### Disabilita il firewall di Ubuntu
+### Disabilire il firewall di Ubuntu(solo in ambiente di test)
+- **Iptables**: K3s installa delle regole molto specifiche per far parlare i container tra loro. Se ufw è attivo, potrebbe sovrascrivere o bloccare i pacchetti che passano per l'interfaccia virtuale di K3s (cni0 o flannel), rendendo i tuoi Pod isolati dal mondo.
+- **Porte necessarie** K3s ha bisogno di molte porte aperte (6443 per l'API, 10250 per il Kubelet, porte per il traffico VXLAN, ecc.). Invece di aprirle una per una rischiando di dimenticarne una e impazzire con i log, si disabilita il firewall dell'host, dato che la sicurezza dovrebbe essere gestita a un livello superiore (es. i Security Groups del cloud o il firewall del router).
 
-(Per evitare mal di testa con le porte di K3s)
 `sudo ufw disable`
 
 ### Installazione di K3s (Senza Traefik)
 
-Questo è il comando chiave. Come abbiamo deciso, disabilitiamo Traefik perché useremo Caddy (sul Raspberry) e NodePort per gestire il traffico. Se lasciassimo Traefik, occuperebbe le porte e farebbe conflitto.
+Ho scelto di disabilitare **Traefik**, un Reverse Proxy compreso in K3S, perché era già presente un **container Caddy** nell'infrastruttura del mio homelab e **NodePort** per gestire il traffico. Se avessi lasciato Traefik, mi avrebbe occupato le porte e fatto conflitto.
+**NodePort**:È un oggetto di configurazione di Kubernetes che espone un servizio su una porta statica.
+Apre una porta specifica (range 30000-32767) su tutte le interfacce di rete di ogni singolo nodo del cluster (Master e Worker).
+Mappa una porta esterna alla porta interna del container (targetPort), rendendo il servizio raggiungibile tramite l'IP della macchina fisica/VM.
+
 `curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -`
 
-Di default, k3s richiede sudo per ogni comando kubectl. È noioso. Per usare kubectl senza sudo, lancia questo comando:
+**Di default, k3s richiede sudo per ogni comando kubectl. Per usare kubectl senza sudo, usiamo questo comando:**
 `sudo chmod 644 /etc/rancher/k3s/k3s.yaml`
 
-### Abilita qemu agent sulla vm master
+### Abilitare qemu agent sulla vm master
 
 ```bash
 sudo systemctl enable qemu-guest-agent
 sudo systemctl start qemu-guest-agent
-sudo systemctl status qemu-guest-agent    #controlla se sta runnando ed è enabled
+sudo systemctl status qemu-guest-agent    
 
 ```
 
----
-
-## Setup Nodi (Raspberry Pi)
+## Setup Nodo worker sul Raspberry Pi
 
 ### Copia token da dare a raspberry
 
@@ -119,206 +115,28 @@ sudo systemctl status qemu-guest-agent    #controlla se sta runnando ed è enabl
 
 ### Configurazione Cgroups
 
-I Raspberry Pi spesso hanno i "cgroups" disabilitati di default. Senza questi, K3s non parte.
+**I Raspberry Pi spesso hanno i "cgroups" disabilitati di default. Senza questi, K3s non parte.**
+
 `cat /boot/firmware/cmdline.txt`
 
-Cosa cercare: In fondo alla riga, devi vedere scritto: `cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory`
+Cosa cercare?: In fondo alla riga, deve esserci scritto: **`cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory`**
 
 Se NON ci sono:
 
-1. Modifica il file: `sudo nano /boot/firmware/cmdline.txt`
-2. `sudo reboot`
+1. sudo nano /boot/firmware/cmdline.txt`
+2. sudo reboot
 
-### Unisci il raspberry al cluster
+### Unire il raspberry al cluster
 
-Dopo il riavvio:
-`curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.50:6443 K3S_TOKEN="K10***********token::server:token****************" sh -`
+Dopo il reboot:
 
-**Verifica dal master con:**
+`curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.X:6443 K3S_TOKEN="K10***********token::server:token****************" sh -`
+
+**Verificare dal nodo master:**
+
 `sudo kubectl get nodes`
 
----
+## Deployment Applicazione: Portfolio su sito web
 
-## Deployment Applicazione: Portfolio Statico
+Per sperimentare con il load balancing tra i nodi ho creato un sito web Portfolio che gira su Nginx dentro Kubernetes. 
 
-Creiamo un Portfolio statico (solo HTML e CSS) che gira su Nginx dentro Kubernetes. Lo terremo separato dal resto usando un nuovo sottodominio (es. portfolio.enrisox-devops.it) e una porta diversa (es. 30081).
-
-### FASE 1: Crea il tuo sito (Sulla VM Master)
-
-```bash
-mkdir -p ~/portfolio
-cd ~/portfolio
-nano index.html
-
-```
-
-### FASE 2: Carica il sito in Kubernetes (Sulla VM Master)
-
-Usiamo una **ConfigMap**: "Prendi questo file index.html e tienilo in memoria".
-`kubectl create configmap portfolio-html --from-file=index.html`
-
-Ora creiamo il Deployment (**portfolio.yaml**):
-`nano portfolio.yaml`
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: portfolio
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: portfolio
-  template:
-    metadata:
-      labels:
-        app: portfolio
-    spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 101
-        runAsGroup: 101
-        fsGroup: 101
-        seccompProfile:
-          type: RuntimeDefault
-      containers:
-      - name: nginx
-        image: nginxinc/nginx-unprivileged:alpine
-        ports:
-        - containerPort: 8080
-        resources:
-          requests:
-            memory: "64Mi"
-            cpu: "50m"
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          privileged: false
-          capabilities:
-            drop:
-              - ALL
-        volumeMounts:
-        - name: html-volume
-          mountPath: /usr/share/nginx/html
-        - name: tmp-volume
-          mountPath: /tmp
-        - name: cache-volume
-          mountPath: /var/cache/nginx
-      volumes:
-      - name: html-volume
-        configMap:
-          name: portfolio-html
-      - name: tmp-volume
-        emptyDir: {}
-      - name: cache-volume
-        emptyDir: {}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: portfolio-service
-spec:
-  selector:
-    app: portfolio
-  type: NodePort
-  ports:
-    - port: 80
-      targetPort: 8080
-      nodePort: 30081
-
-```
-
-Applica tutto:
-`kubectl apply -f portfolio.yaml`
-
----
-
-## Analisi Sicurezza e Risorse
-
-### 1. Sicurezza del Container (Pod Security)
-
-Queste regole impediscono a un attaccante di prendere il controllo del sistema:
-
-* **Non-Root (Rootless):** Il container gira con UID 101 (nginx). Senza permessi di amministratore.
-* **Drop Capabilities:** Rimosse TUTTI i privilegi Linux (`capabilities: drop: ["ALL"]`).
-* **No Privilege Escalation:** Bloccata la possibilità di guadagnare privilegi (`allowPrivilegeEscalation: false`).
-* **Seccomp Profile:** Attivato il filtro `RuntimeDefault` per bloccare chiamate al Kernel pericolose.
-
-### 2. Sicurezza del Filesystem
-
-* **Read-Only Root Filesystem:** L'intero sistema operativo del container è in sola lettura. Un attaccante non può scaricare malware o creare backdoor.
-* **Eccezione:** Montati volumi temporanei (`emptyDir`) su `/tmp` e `/var/cache`.
-
-### 3. Protezione dalle risorse (Anti-DoS)
-
-**Resource Limits:**
-
-* CPU: Max 0.5 core (500m).
-* RAM: Max 256 MiB.
-
-> **Cosa vuol dire "100m"?** In Kubernetes, 1000m = 1 Core intero. Impostando 100m, il container usa al massimo il 10% di un core. Se qualcuno bombarda il sito (DoS), il pod rallenta ma non blocca il Raspberry Pi.
-
-### 4. Sicurezza di Rete & Client (Caddy Headers)
-
-* **X-Frame-Options "DENY":** Protegge dal Clickjacking.
-* **X-Content-Type-Options "nosniff":** Impedisce l'esecuzione di file camuffati.
-* **X-XSS-Protection:** Filtri anti-scripting.
-* **HSTS:** Forza l'uso di HTTPS.
-* **Server Token Removal:** Nascondiamo che stiamo usando Caddy.
-
----
-
-## FASE 3: Configura Caddy (Sul Raspberry)
-
-Sul nodo worker, diciamo a Caddy di fare da Reverse Proxy:
-
-1. Modifica il Caddyfile: `nano Caddyfile`
-2. Aggiungi il blocco:
-
-```text
-portfolio.enrisox-devops.it {
-    reverse_proxy 192.168.1.XX:30081
-}
-
-```
-
-3. Riavvia Caddy: `docker restart caddy`
-
----
-
-## FASE 4: DNS e Test
-
-1. Vai sul tuo provider DNS.
-2. Crea un nuovo record **A** (sottodominio `portfolio`) che punta al tuo IP pubblico di casa.
-3. Aspetta qualche minuto e visita `https://portfolio.enrisox-devops.it`.
-
-**Comandi di verifica:**
-
-```bash
-kubectl get pods
-kubectl get pods -o wide
-
-```
-
-### Procedura di Aggiornamento index.html
-
-Ogni volta che modifichi l'HTML sulla VM Master:
-
-1. Modifica il file: `nano index.html`
-2. Aggiorna la ConfigMap:
-
-```bash
-kubectl delete configmap portfolio-html
-kubectl create configmap portfolio-html --from-file=index.html
-kubectl rollout restart deployment portfolio
-
-```
-
-**Comando per applicare modifiche al file .yaml:**
-`kubectl apply -f portfolio.yaml`
-
----
