@@ -1,12 +1,13 @@
 # Portfolio hostato su cluster Kubernetes K3S 
 
 Questo progetto descrive la creazione di un'infrastruttura K3s ibrida partendo da Proxmox (Nodo Master) fino a Raspberry Pi (nodo Worker). 
-Ibrida sia a livello di architettura: nodo Master su VM in Proxmox ( architettura x86_64/AMD64 ) e nodo worker su Raspberry Pi ( arch ARM64) 
-Che a livello di piattaforme: Virtuale e fisico.
+Ibrida
+- a livello di architettura: nodo Master su VM in Proxmox ( architettura x86_64/AMD64 ) e nodo worker su Raspberry Pi ( arch ARM64) 
+- a livello di piattaforme: Virtuale e fisico.
 
-**K3s è una versione "miniaturizzata" e super leggera di Kubernetes (K8s).**
+**K3S**
 
-È stato creato da Rancher Labs per essere installato facilmente su dispositivi con poche risorse, come un Raspberry Pi, o per ambienti di sviluppo e test rapidi.
+**K3S è una versione super leggera di Kubernetes (K8s).È stato creato da Rancher Labs per essere installato facilmente su dispositivi con poche risorse, come un Raspberry Pi, o per ambienti di sviluppo e test rapidi.**
 
 Punti chiave:
 
