@@ -1,6 +1,6 @@
-# Deployment Portfolio su sito web
+# Sito web Portfolio - App stateless su K3S
 
-Per sperimentare con il load balancing tra i nodi ho creato un sito web Portfolio che gira su Nginx dentro Kubernetes. 
+Per sperimentare con il load balancing tra i nodi ho creato un sito web stateless, "**Portfolio**", che gira su Nginx in cluster Kubernetes. 
 
 ## Creazione sito Sulla VM Master node
 
@@ -22,8 +22,8 @@ Creazione **ConfigMap**:
 kubectl create configmap portfolio-html --from-file=index.html
 ```
 
-Creazione del **Deployment** (**portfolio.yaml**):
-In Kubernetes un Deployment è una risorsa che descrive, in modo dichiarativo, come deve girare una certa applicazione (insieme di Pod) nel cluster: quante repliche avere, che immagine usare e come aggiornare le versioni.
+**Creazione del Deployment (portfolio.yaml**):
+In Kubernetes un Deployment è una risorsa che descrive, in modo dichiarativo, come deve girare una certa applicazione nel cluster: quante repliche avere, che immagine usare e come aggiornare le versioni.
 
 **Cosa fa un Deployment**
 
