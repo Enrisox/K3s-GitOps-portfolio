@@ -292,6 +292,28 @@ Se dopo aver premuto connect c'è pallino verde e scritto successfull, è andato
 IMMAGINE TOKEN4
 
 
+## creazione app
+Dalla dashboard di ArgoCD, clicca su + New App e compila così:
+
+- Application Name: portfolio-app
+- Project: default
+- Sync Policy: Automatic (spunta anche Prune Resources e Self Heal)
+
+**Source:**
+
+- Repository URL: Scegli il tuo repo ghp_...
+- Path: Scrivi apps/portfolio
+
+**Destination:**
+
+- Cluster URL: https://kubernetes.default.svc
+- Namespace: default
+
+**Clicca su Create.**
+
+Cambio il file HTML dentro a configmap.yaml e modifco deployment.yaml sepre dalla repo , in modo che parta un refresh automatico su ArgoCD e il mio sito web si aggiorni..
+
+
 
 
 
