@@ -14,7 +14,8 @@ nano index.html
 Per rimuovere il sudo permanentemente e non doverlo usare ogni volta:
 
 ```bash​
-sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+sudo chmod 644 /etc/rancher/k3s/k3s.yaml       # a ravvio proxmox si resettano i permessi
+sudo chown userX:userX /etc/rancher/k3s/k3s.yaml        #definitivo
 ```
 Creazione **ConfigMap**:
 
