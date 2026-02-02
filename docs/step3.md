@@ -251,5 +251,47 @@ kubectl get pods -n argocd
 ```
 
 ## Creazione repository private su mio Github
+ConfigMap = archivio esterno di file/testo per i tuoi container.
+
+
+IMMAGINE GITHUBREPO
+
+**Ho creato nella repo due file**
+
+```bash
+- apps/portfolio/deployment.yaml   #con dentro sia il deployment che il service
+- apps/portfolio/configmap.yaml    #con dentro il file html del mio sito web portfolio
+```
+
+- settings del profilo github, non della repo
+- Nella colonna a sinistra, scorri fino in fondo e clicca su Developer settings.
+- Lì troverai Personal access tokens. Cliccaci sopra e scegli Tokens (classic).
+- spunta casella repo che contiene i permessi necessari
+
+  IMMAGINE TOKEN2
+  
+- SCADENZA 30 GG o 60
+
+  immagine token 3
+
+  Vai su Settings -> Repositories -> + CONNECT REPO e scegli https:
+
+
+**Ecco cosa scrivere esattamente nei vari box:**
+
+- **Type**: Lascia git.
+- **Project**: Lascia default.
+- **Repository URL**: Incolla l'indirizzo HTTPS del tuo repo (es: https://github.com/TuoNomeUtente/k3s-gitops-infra.git).
+- **Username**: Inserisci il tuo nome utente GitHub.
+- **Password**: Incolla qui il Token (PAT) che ha generato prima (quello che inizia con ghp_).
+- **TLS client certificate / SSH private key**: Lascia vuoti, non servono per la connessione HTTPS con token.
+
+
+Se dopo aver premuto connect c'è pallino verde e scritto successfull, è andato tutto bene.
+
+IMMAGINE TOKEN4
+
+
+
 
 
