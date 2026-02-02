@@ -1,4 +1,11 @@
-# modifica del manifest.yml per creare pipeline RollingUpdate per zero-downtime
+# Zero-Downtime Deployment con Rolling Update e Health Probes
+Questo documento descrive come configurare una strategia di deployment **zero-downtime** in Kubernetes utilizzando **Rolling Update, Readiness/Liveness Probes e procedure di rollout controllate**.
+In un ambiente production, gli aggiornamenti delle applicazioni non devono mai interrompere il servizio agli utenti finali.[web:43] Kubernetes offre meccanismi nativi per garantire che durante un rollout:
+
+- Almeno un Pod resti sempre attivo e pronto a servire traffico[web:12][web:18]
+- I nuovi Pod vengano testati prima di ricevere richieste[web:12][web:41]
+- I vecchi Pod vengano terminati solo dopo che i nuovi sono operativi[web:11][web:43]
+
 Ho aggiunto queste righe al mio file portfolio.yml:
 
 - **maxUnavailable: 0 + maxSurge: 1**	Garantisce sempre 2 Pod attivi durante il rollout
