@@ -153,3 +153,38 @@ IMMAGINE restart
 - **Continuità**: La procedura si ripete finché tutti i vecchi Pod non sono sostituiti.
 - **Risultato finale**: Durante tutto il processo, il traffico gestito da Caddy viene indirizzato solo ai Pod sani. L'utente non percepirà alcuna interruzione (Zero-Downtime).
 
+
+# HPA (Horizontal Pod Autoscaler)
+Il suo compito sarà aumentare o diminuire il numero di repliche (Pod) della mia applicazione in base a quanto carico riceverà.
+
+- **Monitoraggio**: Ogni 15 secondi (di default), l'HPA interroga il Metrics Server (un componente già incluso nel tuo K3s) per sapere quanta CPU o RAM stanno usando i tuoi Pod.
+- **Calcolo**: Confronta il consumo attuale con l'obiettivo (target) che gli hai dato. (Se hai impostato un target del 50% di CPU e i tuoi Pod sono all'80%, l'HPA capisce che l'app è sotto stress.)
+- **Azione**: L'HPA ordina al Deployment di aumentare il numero di repliche. Se invece il carico è basso, spegne i Pod in eccesso per risparmiare risorse.
+
+```bash
+kubectl autoscale deployment portfolio --cpu-percent=50 --min=2 --max=5
+
+kubectl get hpa -w     #per controllare stato HPA
+```
+
+# Cos'è GitOps?
+
+Il GitOps è un paradigma che dice: "Tutto ciò che deve essere installato nel mio cluster deve essere scritto dentro un repository Git (come GitHub)".
+
+**I pilastri del GitOps sono:**
+
+1. **Git come unica fonte di verità**: Non si usa più il terminale (kubectl apply) per cambiare le cose. Se vuoi 5 repliche invece di 2, lo scrivi nel file su GitHub.
+
+2. **Stato Desiderato vs Stato Attuale**: Tu descrivi su Git come vuoi che sia il cluster (Stato Desiderato). Lo strumento GitOps controlla come il cluster è veramente (Stato Attuale).
+
+3. **Sincronizzazione Automatica**: Se i due stati non coincidono, lo strumento corregge il cluster automaticamente.
+
+## Cos'è ArgoCD? 
+**ArgoCD è un controller di Kubernetes che implementa il GitOps. È un software che installi dentro la VM Master e che rimane costantemente "in ascolto".**
+
+
+- **Monitora GitHub**: Guarda il mio repository ogni pochi secondi.
+- **Monitora il Cluster**: Guarda i miei Pod e Service su K3s.
+- **Confronta**: Nota le differenze. Se su GitHub si aggiunge un commento o cambia una porta, lui se ne accorge.
+- **Applica**: Se vede una differenza, pulla i file da GitHub e li applica al cluster.
+
