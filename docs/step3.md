@@ -2,14 +2,15 @@
 Questo documento descrive come configurare una strategia di deployment **zero-downtime** in Kubernetes utilizzando **Rolling Update, Readiness/Liveness Probes e procedure di rollout controllate**.
 In un ambiente production, gli aggiornamenti delle applicazioni non devono mai interrompere il servizio agli utenti finali.[web:43] Kubernetes offre meccanismi nativi per garantire che durante un rollout:
 
-- Almeno un Pod resti sempre attivo e pronto a servire traffico[web:12][web:18]
-- I nuovi Pod vengano testati prima di ricevere richieste[web:12][web:41]
-- I vecchi Pod vengano terminati solo dopo che i nuovi sono operativi[web:11][web:43]
+- Almeno un Pod resti sempre attivo e pronto a servire traffico
+- I nuovi Pod vengano testati prima di ricevere richieste
+- I vecchi Pod vengano terminati solo dopo che i nuovi sono operativi
 
 Ho aggiunto queste righe al mio file portfolio.yml:
 
-- **maxUnavailable: 0 + maxSurge: 1**	Garantisce sempre 2 Pod attivi durante il rollout
-- **Readiness/Liveness Probe**	Evita di mandare traffico a Pod non ancora pronti
+- **maxUnavailable: 0**	Impedisce la terminazione di Pod finché i nuovi non sono Ready --> Zero secondi di downtime garantito 
+- **maxSurge: 1**  Permette un Pod extra temporaneo durante il rollout --> Capacità sempre >= 100% 
+- **Readiness/Liveness Probe**	Testa quando un Pod può ricevere traffico per evitare error 502 durante rollout e rileva Pod bloccati e li riavvia automaticamente  --> Self-healing automatico
 - **Stakater Reloader**	Automazione completa del rollout quando cambia la ConfigMap
 ​- **kubectl rollout history**	Facilita rollback rapidi in caso di problemi
 ​- **Metrics Server + kubectl top**	Monitoring real-time delle risorse per validare i limits
