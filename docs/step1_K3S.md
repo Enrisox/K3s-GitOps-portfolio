@@ -144,13 +144,18 @@ Dopo il reboot:
 ```bash
 curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.X:6443 K3S_TOKEN="K10***********token::server:token****************" sh -
 ```
+### Per rimuovere il sudo permanentemente e non doverlo usare ogni volta:
 
+```bash​
+sudo chmod 644 /etc/rancher/k3s/k3s.yaml       # a ravvio proxmox si resettano i permessi
+sudo chown userX:userX /etc/rancher/k3s/k3s.yaml        #definitivo
+```
 
 **Verificare dal nodo master:**
-![Verifica Nodi Cluster](../imgs/Screenshot%202026-01-28%20120303.png)
-
 ```bash
 sudo kubectl get nodes
 ```
 
+![Verifica Nodi Cluster](../imgs/Screenshot%202026-01-28%20120303.png)
 
+Come da immagine sono presenti entrambi i nodes.
