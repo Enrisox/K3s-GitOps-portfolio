@@ -1,7 +1,4 @@
 # Portfolio hostato su cluster Kubernetes K3S 
-https://portfolio.enrisox-devops.it
-
-![Anteprima Portfolio](../imgs/portfolio1.png)
 
 Questo progetto descrive la creazione di un'**infrastruttura K3s ibrida** partendo dal mio server **Proxmox** che ospiterà una VM ubuntu server come Nodo Master fino al mio **Raspberry Pi 5 (nodo Worker)**. <br>
 **Ibrida a livello di:** <br>
