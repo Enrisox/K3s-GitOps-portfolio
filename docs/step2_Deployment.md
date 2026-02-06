@@ -175,10 +175,10 @@ docker restart caddy
 
 Dal mio provider DNS ho creato un nuovo record A che punta sempre al mio IP pubblico aggiornato(tramite un servizio DDNS Dockerizzato).
 
-                                        https://portfolio.enrisox-devops.it
+https://portfolio.enrisox-devops.it
 
 **Comandi di verifica:**
-![Portfolio Nodes Running](imgs/portfolio_nodes_running.png)
+![Portfolio Nodes Running](../imgs/portfolio_nodes_running.png)
 
 ```bash
 kubectl get pods
