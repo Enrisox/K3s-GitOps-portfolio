@@ -173,7 +173,7 @@ docker restart caddy
 
 ![Anteprima Portfolio](../imgs/portfolio1.png)
 
-Dal mio provider DNS ho creato un nuovo record A che punta al mio IP pubblico(inoltre tramite DDNS Dockerizzato, sono sicuro che i miei sottodomini puntino sempre al mio IP corrente.
+Dal mio provider DNS ho creato un nuovo record A che punta sempre al mio IP pubblico aggiornato(tramite un servizio DDNS Dockerizzato).
 
                                         https://portfolio.enrisox-devops.it
 
