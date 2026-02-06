@@ -1,22 +1,26 @@
-# Sito web Portfolio - App stateless su K3S
+# Sito Web Portfolio: Applicazione Stateless su K3s
 
-Per sperimentare con il load balancing tra i nodi ho creato un sito web stateless, "**Portfolio**", che gira su Nginx in cluster Kubernetes. 
+L'obiettivo di questa fase è implementare un'applicazione stateless per testare il bilanciamento del carico tra i nodi x86 (VM) e ARM (Raspberry Pi) e sperimentare le logiche di Self-Healing e Scalabilità di Kubernetes.
 
-## Creazione sito Sulla VM Master node
-
+## Creazione sito Sulla VM del Master node
+Il contenuto statico viene creato inizialmente sul nodo master:
 ```bash
 mkdir -p ~/portfolio
 cd ~/portfolio
 nano index.html
 ```
 
-## Caricamento del sito in Kubernetes sulla VM Master
+## Astrazione del Contenuto: Kubernetes ConfigMap
+Invece di seguire il workflow tradizionale (build di un'immagine Docker personalizzata per ogni minima modifica), ho optato per l'uso di una ConfigMap.
+Una **ConfigMap** è un database interno a Kubernetes che memorizza dati in formato chiave-valore.
+Invece di creare una nuova immagine Docker ogni volta che cambio una riga di HTML, caricherò il file in una ConfigMap.
+Il file index.html diventa disponibile per tutti i nodi del cluster (Master e Raspberry) senza che debba esistere fisicamente su quei nodi. È Kubernetes che lo "inietta" nel container al momento dell'avvio.
+Vantaggi di questo approccio:
 
-Creazione **ConfigMap**:
+- **Disaccoppiamento**: Il codice (HTML) è separato dall'infrastruttura (Nginx).
+- **Agilità**: Posso aggiornare il sito rapidamente senza dover gestire un Container Registry o rifare il deploy dell'immagine.
+- **Distribuzione Automatica**: Kubernetes "inietta" il file index.html all'interno dei Pod come se fosse un volume fisico, indipendentemente dall'architettura del nodo (Master o Worker).
 
-- Una ConfigMap è un database interno a Kubernetes che memorizza dati in formato chiave-valore.
-- Invece di creare una nuova immagine Docker ogni volta che cambi una riga di HTML, carichi il file in una ConfigMap.
-- Il file index.html diventa disponibile per tutti i nodi del cluster (Master e Raspberry) senza che debba esistere fisicamente su quei nodi. È Kubernetes che lo "inietta" nel container al momento dell'avvio.
 
 ```bash
 kubectl create configmap portfolio-html --from-file=index.html
