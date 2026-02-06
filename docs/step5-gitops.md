@@ -1,4 +1,10 @@
-# Cos'è GitOps?
+# Dal controllo imperativo al GitOps dichiarativo
+
+Nei passi precedenti, l’autoscaling e i rollout erano gestiti in modalità imperativa, con comandi diretti al cluster per modificare repliche o aggiornare Pod.
+
+Con GitOps, tutto lo stato desiderato del cluster — Deployment, ConfigMap, HPA, servizi — viene definito in file YAML nel repository Git. Un controller come ArgoCD confronta continuamente lo stato desiderato con quello attuale e applica automaticamente le modifiche necessarie.
+
+Questo approccio garantisce aggiornamenti idempotenti, riproducibili e sicuri, con rollback automatici, self-healing e sincronizzazione continua, eliminando la necessità di interventi manuali diretti sul cluster.
 
 Il GitOps è un paradigma che dice: "Tutto ciò che deve essere installato nel mio cluster deve essere scritto dentro un repository Git (come GitHub)".
 
@@ -9,21 +15,24 @@ Il GitOps è un paradigma che dice: "Tutto ciò che deve essere installato nel m
 3. **Sincronizzazione Automatica**: Se i due stati non coincidono, lo strumento corregge il cluster automaticamente.
 
 ## Cos'è ArgoCD? 
-**ArgoCD è un controller di Kubernetes che implementa il GitOps. È un software che installiamo dentro la VM Master e che rimane costantemente "in ascolto".**
+![Screenshot 2026-02-06 174652](../imgs/Screenshot%202026-02-06%20174652.png)
 
+**Argo CD** è uno **strumento di continuous delivery dichiarativo GitOps per Kubernetes**. Automatizza il deployment e gli aggiornamenti delle applicazioni nei cluster Kubernetes, garantendo coerenza e riducendo gli errori manuali. È uno dei quattro sottoprogetti del Progetto Argo, che a dicembre 2022 ha ricevuto la graduation dalla Cloud Native Computing Foundation (CNCF), il che ne garantisce la sicurezza e l’affidabilità anche su larga scala.
 
 - **Monitora GitHub**: Guarda il mio repository ogni pochi secondi.
 - **Monitora il Cluster**: Guarda i miei Pod e Service su K3s.
 - **Confronta**: Nota le differenze. Se su GitHub si aggiunge un commento o cambia una porta, lui se ne accorge.
 - **Applica**: Se vede una differenza, pulla i file da GitHub e li applica al cluster.
 
+## Installazione ArgoCD
 ```bash
 kubectl create namespace argocd   # Crea il namespace
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml        # Installa ArgoCD
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml   
 ```
 **Ottimizzazione: Forzare ArgoCD sulla VM Master**
 
-Per evitare che il Raspberry venga rallentato, ho forzato tutti i componenti di ArgoCD a girare esclusivamente sulla VM (nodo k3s-master) tramite il nodeSelector.
+Per evitare che il Raspberry venga rallentato, ho forzato tutti i componenti di ArgoCD a girare esclusivamente sulla VM (nodo k3s-master) tramite il **nodeSelector**.
+
 ```bash
 kubectl patch deployment argocd-server -n argocd -p '{"spec": {"template": {"spec": {"nodeSelector": {"kubernetes.io/hostname": "k3s-master"}}}}}'
 kubectl patch deployment argocd-repo-server -n argocd -p '{"spec": {"template": {"spec": {"nodeSelector": {"kubernetes.io/hostname": "k3s-master"}}}}}'
@@ -43,71 +52,66 @@ kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}'
 ```Bash
 kubectl get svc -n argocd argocd-server
 ```
-**Configura il Caddyfile sul Raspberry:**
+## Crea o modifica il Caddyfile :
 
 ```Plaintext
 argo.enrisox-devops.it {
-    reverse_proxy https://192.168.1.50:30263 {
+    reverse_proxy https://192.168.1.X:30260 {
         transport http {
             tls_insecure_skip_verify
         }
     }
 }
 ```
-**Restartiamo Caddy :**
+# Ricarica poi container Caddy :
 ```
 sudo systemctl restart caddy
 ```
 
-**Estrai la password decriptata e copiala**
+## Estrai e copia la password decriptata 
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
 ```
-**Attiva l'accesso Web**
 
-```bash
-```
-**Dal mio browser PC ho aperto il sottodominio creato poco fa sul mio gestore DNS:**
+**Dal browser PC ho aperto il sottodominio apposito :**
 
 https://argo.enrisox-devops.it
 
 Login:
 
 - User: admin
-- Password: Quella copiata poco fa.
+- Password: Quella copiata
 
 **Verifica dei Pod**
 ```bash
 kubectl get pods -n argocd
 ```
 
-## Creazione repository private su mio Github
-ConfigMap = archivio esterno di file/testo per i tuoi container.
+## Creazione repository privata su Github
 
+![Repository](../imgs/repogithub.png)
 
-IMMAGINE GITHUBREPO
-
-**Ho creato nella repo due file**
+**Ho creato due file sulla repository**
 
 ```bash
 - apps/portfolio/deployment.yaml   #con dentro sia il deployment che il service
 - apps/portfolio/configmap.yaml    #con dentro il file html del mio sito web portfolio
 ```
 
-- settings del profilo github, non della repo
+## Token Github
+![Token](../imgs/token.png)
+- In settings account Github
 - Nella colonna a sinistra, scorri fino in fondo e clicca su Developer settings.
 - Lì troverai Personal access tokens. Cliccaci sopra e scegli Tokens (classic).
-- spunta casella repo che contiene i permessi necessari
-
-  IMMAGINE TOKEN2
-  
+- spunta casella **repo** che contiene i permessi necessari
 - SCADENZA 30 GG o 60
 
-  immagine token 3
+![Token](../imgs/argo1.png)
 
-  Vai su Settings -> Repositories -> + CONNECT REPO e scegli https:
+Settings -> Repositories -> + CONNECT REPO e scegli https:
 
-
+![Token](../imgs/argo3.png)
+<br>
 **Ecco cosa scrivere esattamente nei vari box:**
 
 - **Type**: Lascia git.
@@ -117,27 +121,29 @@ IMMAGINE GITHUBREPO
 - **Password**: Incolla qui il Token (PAT) che ha generato prima (quello che inizia con ghp_).
 - **TLS client certificate / SSH private key**: Lascia vuoti, non servono per la connessione HTTPS con token.
 
+Se dopo aver premuto connect c'è pallino verde e scritto successfull, è andata a buon fine
 
-Se dopo aver premuto connect c'è pallino verde e scritto successfull, è andato tutto bene.
+![Token](../imgs/token4.png)
 
-IMMAGINE TOKEN4
+## Creazione Applicazione su ArgoCD
+![Argo-app](../imgs/argo5.png)
 
-
-## creazione app
 Dalla dashboard di ArgoCD, clicca su + New App e compila così:
 
 - Application Name: portfolio-app
 - Project: default
 - Sync Policy: Automatic (spunta anche Prune Resources e Self Heal)
-
-**Source:**
-
-- Repository URL: Scegli il tuo repo ghp_...
-- Path: Scrivi apps/portfolio
+- Repository URL:
+- Path: apps/portfolio
 
 **Destination:**
 
 - Cluster URL: https://kubernetes.default.svc
 - Namespace: default
 
-**Clicca su Create.**
+**Create.**
+![Argo-app](../imgs/argo6.png)
+
+
+
+
