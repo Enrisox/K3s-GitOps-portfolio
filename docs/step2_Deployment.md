@@ -1,5 +1,4 @@
 # Sito Web Portfolio: Applicazione Stateless su K3s
-
 L'obiettivo di questa fase è implementare un'applicazione stateless per testare il bilanciamento del carico tra i nodi x86 (VM) e ARM (Raspberry Pi) e sperimentare le logiche di Self-Healing e Scalabilità di Kubernetes.
 
 ## Creazione sito Sulla VM del Master node
@@ -152,7 +151,6 @@ Nginx, per funzionare, abbia bisogno di scrivere dei file temporanei (PID e cach
 * **HSTS:** Forza l'uso di HTTPS.
 * **Server Token Removal:** Nasconde il Reverse Proxy in uso.
 
-
 ## Configurazione di Caddy come Reverse Proxy 
 
 Sul nodo worker, ho modificato il Caddyfile per dirgli di fare Reverse proxy verso il sottodominio.
@@ -173,35 +171,60 @@ docker restart caddy
 
 ## DNS e Test
 
-Dal mio provider DNS ho creato un nuovo record A che punta al mio IP pubblico(inoltre tramite container DDNS, Cloudflare aggiorna sempre il mio IP qualora cambi)
+![Anteprima Portfolio](../imgs/portfolio1.png)
 
-https://portfolio.enrisox-devops.it
+Dal mio provider DNS ho creato un nuovo record A che punta al mio IP pubblico(inoltre tramite DDNS Dockerizzato, sono sicuro che i miei sottodomini puntino sempre al mio IP corrente.
+
+                                        https://portfolio.enrisox-devops.it
 
 **Comandi di verifica:**
+![Portfolio Nodes Running](imgs/portfolio_nodes_running.png)
 
 ```bash
 kubectl get pods
 kubectl get pods -o wide
 ```
-IMMAGINE PODS
 
-### Procedura di Aggiornamento index.html
+# Due tipi di modifiche
+- modifica del solo contenuto HTML
+- modifica della configurazione Kubernetes (Deployment)
 
-Ogni volta che modificherò l'HTML sulla VM Master:
+## Procedura Aggiornamento index.html
 
-1. nano index.html
-2. Aggiornare la ConfigMap:
-
+1. modifica index.html con **nano index.html**
+2. Aggiornamento di ConfigMap:
 ```bash
-kubectl delete configmap portfolio-html
-kubectl create configmap portfolio-html --from-file=index.html
-kubectl rollout restart deployment portfolio
+kubectl create configmap portfolio-html \
+  --from-file=index.html \
+  --dry-run=client -o yaml | kubectl apply -f -       #Zero downtime. La ConfigMap non sparisce mai.
 
+kubectl rollout restart deployment portfolio         #ordina al Deployment di creare nuovi Pod (con il nuovo HTML) e spegnere quelli vecchi gradualmente (Rolling Update). Questo assicura che gli utenti vedano subito la modifica senza interrompere il servizio.
+```
+## Comando all-in-one
+```bash
+kubectl create configmap portfolio-html --from-file=index.html --dry-run=client -o yaml | kubectl apply -f - && kubectl rollout restart deployment portfolio
 ```
 
-**Comando per applicare modifiche al file .yaml:**
+
+## Comando per applicare modifiche al file deployment, portfolio.yml:
+
+**Metodo solo se cambia la struttura Kubernetes, ad esempio:**
+
+- numero di repliche
+- immagine Docker
+- porte
+- risorse CPU / RAM
+- volumi o mount
+- variabili d’ambiente
+
 ```bash
+nano portfolio.yaml
 kubectl apply -f portfolio.yaml
 ```
+## Verifica dello Stato
+Dopo aver eseguito una delle due procedure, verifica che i nuovi pod siano attivi e funzionanti:
 
+```bash
+kubectl rollout status deployment portfolio
+```
 
