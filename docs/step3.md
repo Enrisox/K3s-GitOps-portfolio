@@ -1,10 +1,35 @@
 # Zero-Downtime Deployment con Rolling Update e Health Probes
-Questo documento descrive come configurare una strategia di deployment **zero-downtime** in Kubernetes utilizzando **Rolling Update, Readiness/Liveness Probes e procedure di rollout controllate**.
-In un ambiente production, gli aggiornamenti delle applicazioni non devono mai interrompere il servizio agli utenti finali.[web:43] Kubernetes offre meccanismi nativi per garantire che durante un rollout:
 
-- Almeno un Pod resti sempre attivo e pronto a servire traffico
-- I nuovi Pod vengano testati prima di ricevere richieste
-- I vecchi Pod vengano terminati solo dopo che i nuovi sono operativi
+Questo step descrive come Kubernetes garantisce aggiornamenti applicativi
+**senza interruzione del servizio**, utilizzando:
+
+- Rolling Update
+- Readiness Probe
+- Liveness Probe
+- Rollout controllato
+
+
+## Obiettivo
+
+Durante un aggiornamento:
+- almeno un Pod rimane sempre disponibile
+- i nuovi Pod ricevono traffico solo quando pronti
+- i Pod difettosi vengono riavviati automaticamente
+
+---
+
+## Strategia di Rolling Update
+
+Configurazione applicata al Deployment:
+
+- `maxUnavailable: 0`  
+  → nessun Pod viene terminato finché il nuovo non è Ready
+
+- `maxSurge: 1`  
+  → Kubernetes può creare temporaneamente un Pod extra
+
+Questo garantisce **zero-downtime reale**.
+
 
 Ho aggiunto queste righe al mio file portfolio.yml:
 
