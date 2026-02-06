@@ -34,7 +34,7 @@ In Kubernetes un Deployment è una risorsa che descrive, in modo dichiarativo, c
 - Mantiene sempre in esecuzione il numero desiderato di Pod (es. 3 repliche di un’app web).
 - Gestisce gli aggiornamenti “rolling” cambiando gradualmente i Pod alla nuova versione dell’immagine, senza downtime (se configurato correttamente).
 - Permette rollback facili: se una nuova versione rompe qualcosa, puoi tornare a quella precedente con un comando.
--Consente di scalare in su/giù modificando solo replicas nel manifest o con kubectl scale.
+- Consente di scalare in su/giù modificando solo replicas nel manifest o con kubectl scale.
 
 ```bash
 nano portfolio.yaml
@@ -120,10 +120,11 @@ kubectl apply -f portfolio.yaml`
 
 ## Analisi Sicurezza e Risorse
 
-### 1. Sicurezza del Container (Pod Security)
+### 1. Pod Security
 
 Ho implementato diverse regole per impedire a un attaccante di prendere il controllo del sistema:
-
+* **nginx-unprivileged**: L'immagine Nginx ufficiale "standard" è progettata per avviarsi come root perché deve aprire la porta 80. Usando la versione unprivileged, il processo Nginx è configurato internamente per girare sulla porta 8080. Questo permette al container di funzionare correttamente anche quando Kubernetes impone runAsNonRoot: true, eliminando alla radice il rischio che un attaccante possa scalare i privilegi.
+* **alpine** : Attack surfase ridotta per mancanza di pacchetti o shell avanzate e minor numero di CVE rilevate dagli scanne di sicurezza.
 * **Non-Root (Rootless):** Il container gira con UID 101 (nginx). Senza permessi di amministratore.
 * **Drop Capabilities:** Rimossi TUTTI i privilegi Linux (capabilities: drop: ["ALL"]).
 * **No Privilege Escalation:** Bloccata la possibilità di guadagnare privilegi (allowPrivilegeEscalation: false).
@@ -132,7 +133,7 @@ Ho implementato diverse regole per impedire a un attaccante di prendere il contr
 ### 2. Sicurezza del Filesystem
 
 * **Read-Only Root Filesystem:** L'intero sistema operativo del container è in sola lettura. Un attaccante non può scaricare malware o creare backdoor.
-* **Eccezione:** Montati volumi temporanei (`emptyDir`) su `/tmp` e `/var/cache`.
+Nginx, per funzionare, abbia bisogno di scrivere dei file temporanei (PID e cache). senza i volumi emptyDir su /tmp e /var/cache/nginx , con un filesystem in sola lettura, Nginx crasherebbe all'avvio perché l'immagine unprivileged tenta di scrivere i file di gestione del processo in quelle directory.
 
 ### 3. Protezione dalle risorse (Anti-DoS)
 
@@ -152,9 +153,9 @@ Ho implementato diverse regole per impedire a un attaccante di prendere il contr
 * **Server Token Removal:** Nasconde il Reverse Proxy in uso.
 
 
-## Configurare Reverse Proxy 
+## Configurazione di Caddy come Reverse Proxy 
 
-Sul nodo worker, diciamo a Caddy di fare da Reverse Proxy:
+Sul nodo worker, ho modificato il Caddyfile per dirgli di fare Reverse proxy verso il sottodominio.
 
 **Modifica del Caddyfile:**
 
@@ -172,11 +173,9 @@ docker restart caddy
 
 ## DNS e Test
 
-Dal mio provider DNS ho creato un nuovo record A che punta al mio IP pubblico(inoltre tramite container DDNS, Cloudflare aggiorna il mio IP qualora cambiasse)
+Dal mio provider DNS ho creato un nuovo record A che punta al mio IP pubblico(inoltre tramite container DDNS, Cloudflare aggiorna sempre il mio IP qualora cambi)
 
 https://portfolio.enrisox-devops.it
-
-IMMAGINE SITO
 
 **Comandi di verifica:**
 
