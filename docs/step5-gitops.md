@@ -73,9 +73,7 @@ sudo systemctl restart caddy
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
 ```
 
-**Dal browser PC ho aperto il sottodominio apposito :**
-
-https://argo.enrisox-devops.it
+**Dal browser PC ho aperto il sottodominio che ho creato per accedere ad Argo :**
 
 Login:
 
