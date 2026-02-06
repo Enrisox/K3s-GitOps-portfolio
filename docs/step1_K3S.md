@@ -1,11 +1,11 @@
 # Portfolio hostato su cluster Kubernetes K3S 
-
-Questo progetto descrive la creazione di un'infrastruttura K3s ibrida partendo da Proxmox (Nodo Master) fino a Raspberry Pi (nodo Worker). 
+![Anteprima Portfolio](../imgs/portfolio1.png)
+Questo progetto descrive la creazione di un'**infrastruttura K3s ibrida** partendo da **Proxmox** (Nodo Master) fino a **Raspberry Pi (nodo Worker)**. 
 Ibrida
-- a livello di architettura: nodo Master su VM in Proxmox ( architettura x86_64/AMD64 ) e nodo worker su Raspberry Pi ( arch ARM64) 
-- a livello di piattaforme: Virtuale e fisico.
+-**a livello di architettura**: nodo Master su VM in Proxmox ( architettura x86_64/AMD64 ) e nodo worker su Raspberry Pi ( arch ARM64) 
+- **a livello di piattaforme**: Virtuale e fisico.
 
-**K3S**
+## K3S 
 
 **K3S è una versione super leggera di Kubernetes (K8s).È stato creato da Rancher Labs per essere installato facilmente su dispositivi con poche risorse, come un Raspberry Pi, o per ambienti di sviluppo e test rapidi.**
 
@@ -17,13 +17,14 @@ Punti chiave:
 4. **Deployment Hardened**: Pubblicazione di un sito statico tramite ConfigMap e Nginx, con un forte focus sulla sicurezza (filesystem in sola lettura, utente non-root, limiti di CPU/RAM) per proteggere l'hardware sottostante da attacchi o sovraccarichi.
 5. **Esposizione Sicura**: Utilizzo di Caddy come Reverse Proxy con header di sicurezza avanzati e gestione DNS per l'accesso pubblico via HTTPS.
 
-
 ## Setup Infrastruttura: Proxmox e K3s
-Per creare la VM master, ho utilizzato una VM template su Proxmox, precedentemente creata in un altro mio progetto ( https://github.com/Enrisox/DevOps-CI-CD-Lab-Jenkins-Terraform-Ansible) per fare esperienza con Terraform. A questa VM ho cambiato le risorse allocate per venire incontro a quelle richieste dal nodo master.
+![Template VM Proxmox](../imgs/proxmox-vm-template.png)
 
-IMMAGINE VM TEMPLATE PROXMOX 
+Per creare la VM master, ho utilizzato una VM template su Proxmox, precedentemente creata in un altro mio progetto: --> https://github.com/Enrisox/DevOps-CI-CD-Lab-Jenkins-Terraform-Ansible. <br>
 
-### Creazione VM Master
+Ho poi eseguito un over-provisioning delle risorse del template originale (CPU e RAM), garantendo al nodo Master la potenza di calcolo richiesta dal piano di controllo di Kubernetes.
+
+## Creazione VM Master
 
 ```bash
 qm clone 100 103 --name k3s-master --full && \      
@@ -38,7 +39,9 @@ qm resize 103 scsi0 +32G
 Invece di accendere la VM e configurare IP, utenti e password a mano nel terminal della console, ho usato **Cloud-Init** per "iniettare" queste impostazioni dall'esterno mentre la macchina si avvia.
 
 
-Per passare la chiave via comando, Proxmox deve leggere un file. Crea un file temporaneo con la tua chiave pubblica. Sulla shell di Proxmox:
+Per passare la chiave via comando, Proxmox deve leggere un file. <br>
+Crea un file temporaneo con la tua chiave pubblica. Sulla shell di Proxmox:
+
 ```bash
 nano /root/chiave.pub
 ```
@@ -47,7 +50,7 @@ nano /root/chiave.pub
 
 ### Configurazione Cloud-Init
 
-**Configurare il drive Cloud-Init**
+**Configura il drive Cloud-Init cambiando ip, user e password**
 
 ```bash
 qm set 103 --ide2 local-lvm:cloudinit \
@@ -66,6 +69,7 @@ qm start 103
 ```
 
 ## Configurazione VM Master
+![QEMU Agent Enabled](../imgs/qemuagent.png)
 
 Una volta fatto accesso in ssh alla vm 103 tramite key auth ho aggiornato il sistema e installato agente sul nodo K3S master  ( prima era stato solamente abilitato, non installato)
 
@@ -74,7 +78,6 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install qemu-guest-agent -y
 
 ```
-
 ## Disabilire il firewall di Ubuntu (solo in ambiente di test)
 
 - **Iptables**: K3s installa delle regole molto specifiche per far parlare i container tra loro. Se ufw è attivo, potrebbe sovrascrivere o bloccare i pacchetti che passano per l'interfaccia virtuale di K3s (cni0 o flannel), rendendo i tuoi Pod isolati dal mondo.
@@ -85,6 +88,7 @@ sudo ufw disable`
 ```
 
 ## Installazione di K3s (Senza Traefik)
+![Installazione K3s tramite Curl](../imgs/curl.png)
 
 Ho scelto di disabilitare **Traefik**, un Reverse Proxy compreso in K3S, perché era già presente un **container Caddy** nell'infrastruttura del mio homelab e **NodePort** per gestire il traffico. Se avessi lasciato Traefik, mi avrebbe occupato le porte e fatto conflitto.
 **NodePort**:È un oggetto di configurazione di Kubernetes che espone un servizio su una porta statica.
@@ -143,6 +147,7 @@ curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.X:6443 K3S_TOKEN="K10**
 
 
 **Verificare dal nodo master:**
+![Verifica Nodi Cluster](../imgs/Screenshot%202026-01-28%20120303.png)
 
 ```bash
 sudo kubectl get nodes`
