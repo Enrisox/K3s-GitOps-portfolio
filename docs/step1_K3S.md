@@ -7,7 +7,7 @@ Questo progetto descrive la creazione di un'**infrastruttura K3s ibrida** parten
 - **architettura**: nodo Master su VM in Proxmox ( architettura x86_64/AMD64 ) e nodo worker su Raspberry Pi ( arch ARM64) 
 - **piattaforme**: Virtuale e fisico.
 
-## K3S 
+## Perchè ho scelto K3S?
 
 **K3S è una versione super leggera di Kubernetes (K8s).È stato creato da Rancher Labs per essere installato facilmente su dispositivi con poche risorse, come un Raspberry Pi, o per ambienti di sviluppo e test rapidi.**
 
