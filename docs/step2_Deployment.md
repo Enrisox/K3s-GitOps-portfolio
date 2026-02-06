@@ -114,7 +114,7 @@ spec:
 **Infine applicare tutto con questo comando:**
 
 ```bash
-kubectl apply -f portfolio.yaml`
+kubectl apply -f portfolio.yaml
 ```
 
 ## Analisi Sicurezza e Risorse
