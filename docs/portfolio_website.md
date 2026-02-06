@@ -11,12 +11,7 @@ nano index.html
 ```
 
 ## Caricamento del sito in Kubernetes sulla VM Master
-Per rimuovere il sudo permanentemente e non doverlo usare ogni volta:
 
-```bash​
-sudo chmod 644 /etc/rancher/k3s/k3s.yaml       # a ravvio proxmox si resettano i permessi
-sudo chown userX:userX /etc/rancher/k3s/k3s.yaml        #definitivo
-```
 Creazione **ConfigMap**:
 
 - Una ConfigMap è un database interno a Kubernetes che memorizza dati in formato chiave-valore.
