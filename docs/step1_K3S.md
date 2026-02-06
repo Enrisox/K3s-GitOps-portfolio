@@ -41,15 +41,13 @@ qm resize 103 scsi0 +32G
 
 Invece di accendere la VM e configurare IP, utenti e password a mano nel terminal della console, ho usato **Cloud-Init** per "iniettare" queste impostazioni dall'esterno mentre la macchina si avvia.
 
-
 Per passare la chiave via comando, Proxmox deve leggere un file. <br>
-Crea un file temporaneo con la tua chiave pubblica. Sulla shell di Proxmox:
+Crea un file temporaneo con la tua chiave pubblica e incollala dentro,salva ed esci. <br>
+Sulla shell di Proxmox:
 
 ```bash
 nano /root/chiave.pub
 ```
-
-**INCOLLA DENTRO LA TUA CHIAVE PUBBLICA**
 
 ### Configurazione Cloud-Init
 
@@ -79,7 +77,6 @@ Una volta fatto accesso in ssh alla vm 103 tramite key auth ho aggiornato il sis
 ```bash
 sudo apt update && sudo apt upgrade -y
 sudo apt install qemu-guest-agent -y
-
 ```
 ## Disabilire il firewall di Ubuntu (solo in ambiente di test)
 
