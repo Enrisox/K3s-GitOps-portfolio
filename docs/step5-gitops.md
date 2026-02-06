@@ -63,7 +63,7 @@ argo.enrisox-devops.it {
     }
 }
 ```
-# Ricarica poi container Caddy :
+## Ricarica poi container Caddy :
 ```
 sudo systemctl restart caddy
 ```
