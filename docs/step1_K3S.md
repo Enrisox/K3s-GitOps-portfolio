@@ -96,7 +96,7 @@ Apre una porta specifica (range 30000-32767) su tutte le interfacce di rete di o
 Mappa una porta esterna alla porta interna del container (targetPort), rendendo il servizio raggiungibile tramite l'IP della macchina fisica/VM.
 
 ```bash
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -`
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -
 ```
 
 **Di default, k3s richiede sudo per ogni comando kubectl. Per usare kubectl senza sudo, usiamo questo comando:**
@@ -133,7 +133,7 @@ Cosa cercare?: In fondo alla riga, deve esserci scritto: **`cgroup_enable=cpuset
 Se NON ci sono:
 
 ```bash
-sudo nano /boot/firmware/cmdline.txt`
+sudo nano /boot/firmware/cmdline.txt
 sudo reboot
 ```
 
@@ -150,7 +150,7 @@ curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.X:6443 K3S_TOKEN="K10**
 ![Verifica Nodi Cluster](../imgs/Screenshot%202026-01-28%20120303.png)
 
 ```bash
-sudo kubectl get nodes`
+sudo kubectl get nodes
 ```
 
 
