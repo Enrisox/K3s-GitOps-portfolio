@@ -2,7 +2,7 @@
 
 ![Anteprima Portfolio](../imgs/portfolio1.png)
 
-Questo progetto descrive la creazione di un'**infrastruttura K3s ibrida** partendo da **Proxmox** (Nodo Master) fino a **Raspberry Pi (nodo Worker)**. <br>
+Questo progetto descrive la creazione di un'**infrastruttura K3s ibrida** partendo dal mio server **Proxmox** che ospiterà una VM ubuntu server come Nodo Master fino al mio **Raspberry Pi 5 (nodo Worker)**. <br>
 **Ibrida a livello di:** <br>
 -**architettura**: nodo Master su VM in Proxmox ( architettura x86_64/AMD64 ) e nodo worker su Raspberry Pi ( arch ARM64) 
 - **piattaforme**: Virtuale e fisico.
