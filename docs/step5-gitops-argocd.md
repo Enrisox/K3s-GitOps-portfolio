@@ -24,6 +24,8 @@ Il GitOps è un paradigma che dice: "Tutto ciò che deve essere installato nel m
 - **Confronta**: Nota le differenze. Se su GitHub si aggiunge un commento o cambia una porta, lui se ne accorge.
 - **Applica**: Se vede una differenza, pulla i file da GitHub e li applica al cluster.
 
+# GitOps con ArgoCD: Sync automatico, self-healing e rollout
+
 ## Installazione ArgoCD
 ```bash
 kubectl create namespace argocd   # Crea il namespace
@@ -128,11 +130,13 @@ Se dopo aver premuto connect c'è pallino verde e scritto successfull, è andata
 
 Dalla dashboard di ArgoCD, clicca su + New App e compila così:
 
-- Application Name: portfolio-app
-- Project: default
-- Sync Policy: Automatic (spunta anche Prune Resources e Self Heal)
-- Repository URL:
-- Path: apps/portfolio
+- **Application Name**: portfolio-app
+- **Project**: default
+- **Repository URL**:
+- **Path**: apps/portfolio
+- **Automated Sync**: applica automaticamente le differenze tra Git e cluster.
+- **Prune**: se elimino un YAML da Git, ArgoCD elimina anche la risorsa dal cluster.
+- **Self-Heal**: se qualcuno modifica manualmente il cluster, ArgoCD lo riporta allo stato dichiarato su Git.
 
 **Destination:**
 
@@ -141,6 +145,19 @@ Dalla dashboard di ArgoCD, clicca su + New App e compila così:
 
 **Create.**
 ![Argo-app](../imgs/argo6.png)
+
+## Workflow di aggiornamento automatico (Git → ArgoCD → Kubernetes)
+
+Con ArgoCD in **Automatic Sync**, ogni commit/push sul repository che contiene i manifest fa partire la sincronizzazione (o tramite polling o tramite webhook).
+
+Flusso logico:
+1. Modifico i manifest (o la ConfigMap) nel repo.
+2. `git commit` + `git push`.
+3. ArgoCD rileva il cambio.
+4. ArgoCD applica i manifest aggiornati nel cluster.
+5. Kubernetes fa RollingUpdate del Deployment rispettando `maxUnavailable/maxSurge` e le probe → **zero-downtime**.
+6. Dashboard ArgoCD mostra `Synced` e `Healthy`.
+
 
 
 
