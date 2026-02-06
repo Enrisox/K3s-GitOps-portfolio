@@ -123,7 +123,7 @@ kubectl apply -f portfolio.yaml
 
 Ho implementato diverse regole per impedire a un attaccante di prendere il controllo del sistema:
 * **nginx-unprivileged**: L'immagine Nginx ufficiale "standard" è progettata per avviarsi come root perché deve aprire la porta 80. Usando la versione unprivileged, il processo Nginx è configurato internamente per girare sulla porta 8080. Questo permette al container di funzionare correttamente anche quando Kubernetes impone runAsNonRoot: true, eliminando alla radice il rischio che un attaccante possa scalare i privilegi.
-* **alpine** : Attack surfase ridotta per mancanza di pacchetti o shell avanzate e minor numero di CVE rilevate dagli scanne di sicurezza.
+* **alpine** : Attack surfase ridotta per mancanza di pacchetti o shell avanzate e minor numero di CVE rilevate dagli scanner di sicurezza.
 * **Non-Root (Rootless):** Il container gira con UID 101 (nginx). Senza permessi di amministratore.
 * **Drop Capabilities:** Rimossi TUTTI i privilegi Linux (capabilities: drop: ["ALL"]).
 * **No Privilege Escalation:** Bloccata la possibilità di guadagnare privilegi (allowPrivilegeEscalation: false).
