@@ -186,13 +186,13 @@ kubectl get pods -o wide
 ```
 
 # Due tipi di modifiche
-- modifica del solo contenuto HTML
-- modifica della configurazione Kubernetes (Deployment)
+- Modifica del solo contenuto HTML
+- Modifica della configurazione Kubernetes (Deployment)
 
 ## Procedura Aggiornamento index.html
 
 1. modifica index.html con **nano index.html**
-2. Aggiornamento di ConfigMap:
+2. Aggiornamento di **ConfigMap**:
 ```bash
 kubectl create configmap portfolio-html \
   --from-file=index.html \
@@ -205,8 +205,7 @@ kubectl rollout restart deployment portfolio         #ordina al Deployment di cr
 kubectl create configmap portfolio-html --from-file=index.html --dry-run=client -o yaml | kubectl apply -f - && kubectl rollout restart deployment portfolio
 ```
 
-
-## Comando per applicare modifiche al file deployment, portfolio.yml:
+## Comando per applicare modifiche al file deployment "portfolio.yml":
 
 **Metodo solo se cambia la struttura Kubernetes, ad esempio:**
 
@@ -222,7 +221,7 @@ nano portfolio.yaml
 kubectl apply -f portfolio.yaml
 ```
 ## Verifica dello Stato
-Dopo aver eseguito una delle due procedure, verifica che i nuovi pod siano attivi e funzionanti:
+Dopo aver eseguito una delle due procedure, è possibile verificare che i nuovi pod siano attivi e funzionanti:
 
 ```bash
 kubectl rollout status deployment portfolio
