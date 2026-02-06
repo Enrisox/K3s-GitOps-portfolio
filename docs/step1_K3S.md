@@ -87,7 +87,7 @@ sudo apt install qemu-guest-agent -y
 - **Porte necessarie** K3s ha bisogno di molte porte aperte (6443 per l'API, 10250 per il Kubelet, porte per il traffico VXLAN, ecc.). Invece di aprirle una per una rischiando di dimenticarne una e impazzire con i log, si disabilita il firewall dell'host, dato che la sicurezza dovrebbe essere gestita a un livello superiore (es. i Security Groups del cloud o il firewall del router).
 
 ```bash
-sudo ufw disable`
+sudo ufw disable
 ```
 
 ## Installazione di K3s (Senza Traefik)
