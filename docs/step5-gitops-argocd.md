@@ -2,11 +2,11 @@
 
 Nei passi precedenti, l’autoscaling e i rollout erano gestiti in modalità imperativa, con comandi diretti al cluster per modificare repliche o aggiornare Pod.
 
-Con GitOps, tutto lo stato desiderato del cluster — Deployment, ConfigMap, HPA, servizi — viene definito in file YAML nel repository Git. Un controller come ArgoCD confronta continuamente lo stato desiderato con quello attuale e applica automaticamente le modifiche necessarie.
+Con **GitOps**, tutto lo stato desiderato del cluster — Deployment, ConfigMap, HPA, servizi — viene definito in file YAML nel repository Git. Un controller come **ArgoCD** confronta continuamente lo stato desiderato con quello attuale e applica automaticamente le modifiche necessarie.
 
-Questo approccio garantisce aggiornamenti idempotenti, riproducibili e sicuri, con rollback automatici, self-healing e sincronizzazione continua, eliminando la necessità di interventi manuali diretti sul cluster.
+**Questo approccio garantisce aggiornamenti idempotenti, riproducibili e sicuri, con rollback automatici, self-healing e sincronizzazione continua, eliminando la necessità di interventi manuali diretti sul cluster.**
 
-Il GitOps è un paradigma che dice: "Tutto ciò che deve essere installato nel mio cluster deve essere scritto dentro un repository Git (come GitHub)".
+Il GitOps è un paradigma che dice: "Tutto ciò che deve essere installato nel mio cluster deve essere scritto dentro un repository Git".
 
 **I pilastri del GitOps sono:**
 
@@ -150,11 +150,11 @@ Dalla dashboard di ArgoCD, clicca su + New App e compila così:
 
 Con ArgoCD in **Automatic Sync**, ogni commit/push sul repository che contiene i manifest fa partire la sincronizzazione (o tramite polling o tramite webhook).
 
-Flusso logico:
+**Flusso logico:**
+
 1. Modifico i manifest (o la ConfigMap) nel repo.
 2. `git commit` + `git push`.
-3. ArgoCD rileva il cambio.
-4. ArgoCD applica i manifest aggiornati nel cluster.
+3. ArgoCD rileva il cambio e applica i manifest aggiornati nel cluster.
 5. Kubernetes fa RollingUpdate del Deployment rispettando `maxUnavailable/maxSurge` e le probe → **zero-downtime**.
 6. Dashboard ArgoCD mostra `Synced` e `Healthy`.
 
