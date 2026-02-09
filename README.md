@@ -42,3 +42,17 @@ Ho suddiviso la configurazione in moduli logici per facilitare la replicabilità
 5.  [**Step 5: GitOps con ArgoCD**](docs/step5-gitops-argocd.md)  
     Installazione di ArgoCD e collegamento a questo repository per il Continuous Deployment.
 
+## ⚠️ Home Lab Disclaimer
+
+Trattandosi di un ambiente di test basato su risorse hardware limitate e condivise (Home Lab), è importante notare quanto segue:
+
+* **Gestione Risorse**: Il sito Portfolio potrebbe subire rallentamenti nel caso in cui le risorse di calcolo vengano temporaneamente dirottate su altri progetti o container presenti sulla stessa infrastruttura.
+* **Alta Affidabilità (HA)**: Il cluster è configurato con architettura Master/Worker. Sebbene i Pod sul nodo Worker continuino a seguire l'ultimo stato noto, l'eventuale spegnimento o manutenzione del nodo Master (VM su Proxmox) potrebbe causare errori temporanei nel caricamento delle pagine. Tali anomalie non sono riconducibili a bug di configurazione o errori nel codice, ma esclusivamente alla disponibilità hardware del laboratorio personale.
+
+
+Nei prossimi mesi integrerò e aumenterò complessità progetto/cluster : STAY TUNED! <br>
+
+**Se ti è piaciuto, lasciami una ⭐!**
+
+**Enrico Soci - DevSecOps Junior**
+
