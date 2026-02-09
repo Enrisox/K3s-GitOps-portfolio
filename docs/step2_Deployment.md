@@ -1,7 +1,7 @@
 # Sito Web Portfolio: Applicazione Stateless su K3s
 L'obiettivo di questa fase è implementare un'applicazione stateless per testare il bilanciamento del carico tra i nodi x86 (VM) e ARM (Raspberry Pi) e sperimentare le logiche di Self-Healing e Scalabilità di Kubernetes.
 
-## Creazione sito Sulla VM del Master node
+## Creazione index.html sul Master node (Proxmox)
 Il contenuto statico viene creato inizialmente sul nodo master:
 ```bash
 mkdir -p ~/portfolio
@@ -170,6 +170,7 @@ docker restart caddy
 ```
 
 ## DNS e Test
+![Demo portfolio](../imgs/portfolio-enrico.gif)
 
 ![Anteprima Portfolio](../imgs/portfolio1.png)
 
