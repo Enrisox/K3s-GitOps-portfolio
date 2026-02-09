@@ -1,5 +1,7 @@
 # K3s GitOps Cluster
 
+![Demo portfolio](imgs/portfolio-enrico.gif)
+
 Repository per la gestione GitOps di un cluster **K3s** multi-nodo. L'infrastruttura è ottimizzata per l'edge computing, eliminando l'ingress controller interno (Traefik) in favore di un'istanza esterna di Caddy.
 
 ## Architettura
