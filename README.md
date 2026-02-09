@@ -25,3 +25,18 @@ Repository per la gestione GitOps di un cluster **K3s** multi-nodo. L'infrastrut
 4. Il servizio interno instrada il pacchetto ai Pod del Portfolio.
 
 
+## Roadmap del Progetto 
+
+Ho suddiviso la configurazione in moduli logici per facilitare la replicabilità e la manutenzione:
+
+1.  [**Step 1: Installazione K3s**](step1_K3S.md)  
+    Configurazione del Master, join del Worker (Raspberry Pi) e ottimizzazione delle risorse.
+2.  [**Step 2: Deployment & Networking**](step2_Deployment.md)  
+    Configurazione del portfolio, gestione del Service NodePort e setup di Caddy.
+3.  [**Step 3: Zero Downtime**](step3-zero-downtime.md)  
+    Strategie di aggiornamento (Rolling Update) per garantire la continuità del servizio.
+4.  [**Step 4: Autoscaling (HPA)**](step4-autoscaling-hpa.md)  
+    Configurazione del Horizontal Pod Autoscaler basato sull'utilizzo della CPU.
+5.  [**Step 5: GitOps con ArgoCD**](step5-gitops-argocd.md)  
+    Installazione di ArgoCD e collegamento a questo repository per il Continuous Deployment.
+
