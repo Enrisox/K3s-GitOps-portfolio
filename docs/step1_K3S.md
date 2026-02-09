@@ -32,14 +32,14 @@ qm set 103 --cores 2 --memory 4096 --cpu host && \
 qm resize 103 scsi0 +32G
 
 ```
-**qm clone 100 103**crea una copia esatta della VM con ID 100 (che è il template pre-configurato) e assegna alla nuova VM l'ID 103.
-**--name k3s-master**: Rinomina la nuova VM in "k3s-master" per riconoscerla facilmente.
-**--full**: Questa è la parte importante. Crea un Full Clone. Significa che copia fisicamente tutto il disco. La nuova VM sarà totalmente indipendente dal template originale
+- **qm clone 100 103**: crea una copia esatta della VM con ID 100 (che è il template pre-configurato) e assegna alla nuova VM l'ID 103.
+- **--name k3s-master**: Rinomina la nuova VM in "k3s-master" per riconoscerla facilmente.
+- **--full**: Questa è la parte importante. Crea un Full Clone. Significa che copia fisicamente tutto il disco. La nuova VM sarà totalmente indipendente dal template originale
 
 Invece di accendere la VM e configurare IP, utenti e password a mano nel terminal della console, ho usato **Cloud-Init** per "iniettare" queste impostazioni dall'esterno mentre la macchina si avvia.
 
 Per passare la chiave via comando, Proxmox deve leggere un file. <br>
-Crea un file temporaneo con la tua chiave pubblica e incollala dentro,salva ed esci. <br>
+
 Sulla shell di Proxmox:
 
 ```bash
@@ -69,7 +69,7 @@ qm start 103
 ## Configurazione VM Master
 ![QEMU Agent Enabled](../imgs/qemuagent.png)
 
-Una volta fatto accesso in ssh alla vm 103 tramite key auth ho aggiornato il sistema e installato agente sul nodo K3S master  ( prima era stato solamente abilitato, non installato)
+Una volta fatto accesso in ssh alla vm 103 tramite key auth ho aggiornato il sistema e installato agente sul nodo K3S master (prima era stato solamente abilitato, non installato)
 
 ```bash
 sudo apt update && sudo apt upgrade -y
@@ -84,7 +84,7 @@ sudo apt install qemu-guest-agent -y
 sudo ufw disable
 ```
 
-## Installazione di K3s (Senza Traefik)
+## Installazione di K3S (Senza Traefik)
 ![Installazione K3s tramite Curl](../imgs/curl.png)
 
 Ho scelto di disabilitare **Traefik**, un Reverse Proxy compreso in K3S, perché era già presente un **container Caddy** nell'infrastruttura del mio homelab e **NodePort** per gestire il traffico. Se avessi lasciato Traefik, mi avrebbe occupato le porte e fatto conflitto.
@@ -114,7 +114,7 @@ sudo systemctl status qemu-guest-agent
 
 ### Copia token da dare a raspberry
 ```bash
-sudo cat /var/lib/rancher/k3s/server/node-token         #Copia token da dare a raspberry
+sudo cat /var/lib/rancher/k3s/server/node-token      
 ```
 
 ## Configurazione Cgroups
@@ -124,7 +124,6 @@ sudo cat /var/lib/rancher/k3s/server/node-token         #Copia token da dare a r
 ```bash
 cat /boot/firmware/cmdline.txt
 ```
-
 Cosa cercare?: In fondo alla riga, deve esserci scritto: **`cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory`**
 
 Se NON ci sono:
@@ -155,4 +154,4 @@ sudo kubectl get nodes
 
 ![Verifica Nodi Cluster](../imgs/Screenshot%202026-01-28%20120303.png)
 
-Come da immagine sono presenti entrambi i nodes.
+Come da immagine sono attivi entrambi i nodes.
