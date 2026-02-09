@@ -54,5 +54,5 @@ Nei prossimi mesi integrerò e aumenterò complessità progetto/cluster : STAY T
 
 **Se ti è piaciuto, lasciami una ⭐!**
 
-**Enrico Soci - DevSecOps Junior**
+**Enrico Soci - DevSecOps**
 
