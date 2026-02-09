@@ -1,8 +1,11 @@
-# K3s GitOps Cluster
+# 🚀 K3s GitOps Cluster: Portfolio Project
+
 
 ![Demo portfolio](imgs/portfolio-enrico.gif)
 
-Repository per la gestione GitOps di un cluster **K3s** multi-nodo. L'infrastruttura è ottimizzata per l'edge computing, eliminando l'ingress controller interno (Traefik) in favore di un'istanza esterna di Caddy.
+Questo repository documenta la mia prima esperienza pratica con Kubernetes. In vista delle lezioni in aula previste per le prossime settimane, ho deciso di anticipare i tempi esplorando autonomamente le potenzialità di K3s (una distribuzione leggera di K8s) per orchestrare il mio portfolio personale.
+
+L'obiettivo è la creazione di un'infrastruttura Cloud Native ibrida e scalabile, gestita integralmente tramite logiche GitOps. Il cluster è stato ottimizzato per l'edge computing, rimuovendo l'ingress controller predefinito (Traefik) per centralizzare il controllo del traffico su un'istanza esterna di Caddy.
 
 ## Architettura
 
