@@ -1,4 +1,4 @@
-# Portfolio hostato su cluster Kubernetes K3S 
+# Sito Web Portfolio hostato su cluster Kubernetes K3s
 
 Questo progetto descrive la creazione di un'**infrastruttura K3s ibrida** partendo dal mio server **Proxmox** che ospiterà una VM ubuntu server come Nodo Master fino al mio **Raspberry Pi 5 (nodo Worker)**. <br>
 **Ibrida a livello di:** <br>
