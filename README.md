@@ -43,7 +43,7 @@ Ho suddiviso la configurazione in moduli logici per facilitare la replicabilità
 4.  [**Step 4: Autoscaling (HPA)**](docs/step4-autoscaling-hpa.md)  
     Configurazione del Horizontal Pod Autoscaler basato sull'utilizzo della CPU.
 5.  [**Step 5: GitOps con ArgoCD**](docs/step5-gitops-argocd.md)  
-    Installazione di ArgoCD e collegamento a questo repository per il Continuous Deployment.
+    Installazione di ArgoCD e collegamento a un'altra mia private repository per il Continuous Deployment.
 
 ## ⚠️ Home Lab Disclaimer
 
