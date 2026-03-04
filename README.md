@@ -27,11 +27,11 @@ The goal is to create a hybrid, scalable Cloud Native infrastructure managed ent
 ## Project Roadmap
 I have divided the configuration into logical modules to ensure replicability and ease of maintenance:
 
-1.  [**Step 1: Installazione K3s**](docs2/step1_K3s.md): Master configuration, Worker join (Raspberry Pi), and resource optimization.
+1.  [**Step 1: K3s Installation**](docs2/step1_K3s.md): Master configuration, Worker join (Raspberry Pi), and resource optimization.
 2.  [**Step 2: Deployment & Networking**](docs2/step2_deployment.md): Portfolio configuration, NodePort Service management, and Caddy setup.
 3.  [**Step 3: Zero Downtime**](docs2/step3_zero-downtime.md): Update strategies (Rolling Update) to guarantee service continuity.
 4.  [**Step 4: Autoscaling (HPA)**](docs2/step4-autoscaling-hpa.md): Horizontal Pod Autoscaler configuration based on CPU utilization.
-5.  [**Step 5: GitOps con ArgoCD**](docs2/step5-gitops-argocd.md): ArgoCD installation and connection to my private repository for Continuous Deployment.
+5.  [**Step 5: GitOps with ArgoCD**](docs2/step5-gitops-argocd.md): ArgoCD installation and connection to my private repository for Continuous Deployment.
 
 ## ⚠️ Home Lab Disclaimer
 
