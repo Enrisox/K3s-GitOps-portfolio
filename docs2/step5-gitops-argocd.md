@@ -1,52 +1,71 @@
 # From Imperative Control to Declarative GitOps
 
-In previous steps, autoscaling and rollouts were managed imperatively, using direct commands to the cluster to modify replicas or update Pods.
+In the previous steps, autoscaling and rollouts were managed in an imperative way, using direct commands to the cluster to modify replicas or update Pods.
 
-With **GitOps**, the entire desired state of the cluster — Deployments, ConfigMaps, HPAs, Services — is defined in YAML files within a Git repository. A controller like **ArgoCD** continuously compares the desired state with the actual state and automatically applies the necessary changes.
+With **GitOps**, the entire desired state of the cluster — Deployment, ConfigMap, HPA, services — is defined in YAML files within a Git repository. A controller like **ArgoCD** continuously compares the desired state with the current state and automatically applies the necessary changes.
 
-**This approach ensures idempotent, reproducible, and secure updates, with automatic rollbacks, self-healing, and continuous synchronization, eliminating the need for manual intervention on the cluster.**
+**This approach guarantees idempotent, reproducible, and secure updates, with automatic rollbacks, self-healing, and continuous synchronization, eliminating the need for direct manual interventions on the cluster.**
 
-**The Pillars of GitOps:**
+GitOps is a paradigm that says: "Everything that needs to be installed in my cluster must be written inside a Git repository."
 
-1. **Git as the Single Source of Truth**: The terminal (`kubectl apply`) is no longer used for manual changes. If you need 5 replicas instead of 2, you update the file on GitHub.
-2. **Desired State vs. Actual State**: You describe how you want the cluster to look (Desired State). The GitOps tool monitors the real-time status of the cluster (Actual State).
-3. **Automated Reconciliation**: If the two states diverge, the tool automatically corrects the cluster to match Git.
+**The pillars of GitOps are:**
+
+1. **Git as the single source of truth**: The terminal (`kubectl apply`) is no longer used to change things. If you want 5 replicas instead of 2, you write it in the file on GitHub.
+2. **Desired State vs. Current State**: You describe on Git how you want the cluster to be (Desired State). The GitOps tool checks how the cluster actually is (Current State).
+3. **Automatic Synchronization**: If the two states do not coincide, the tool automatically corrects the cluster.
 
 ## What is ArgoCD?
+![Screenshot 2026-02-06 174652](../imgs/Screenshot%202026-02-06%20174652.png)
 
-**Argo CD** is a **declarative, GitOps continuous delivery tool for Kubernetes**. It automates the deployment and lifecycle management of applications, ensuring consistency and reducing manual errors. As a CNCF graduated project, it guarantees security and reliability at scale.
+**Argo CD** is a **declarative GitOps continuous delivery tool for Kubernetes**. It automates the deployment and updates of applications in Kubernetes clusters, ensuring consistency and reducing manual errors. It is one of the four sub-projects of the Argo Project, which in December 2022 received graduation from the Cloud Native Computing Foundation (CNCF), guaranteeing its security and reliability even on a large scale.
 
-* **Monitors GitHub**: Checks the repository every few seconds for changes.
-* **Monitors the Cluster**: Tracks Pods and Services on K3s.
-* **Compares & Synchronizes**: If a difference is detected (e.g., a port change or a new comment in Git), it pulls the updated manifests and applies them to the cluster.
+* **Monitors GitHub**: Checks my repository every few seconds.
+* **Monitors the Cluster**: Looks at my Pods and Services on K3s.
+* **Compares**: Notices the differences. If a comment is added or a port changes on GitHub, it notices.
+* **Applies**: If it sees a difference, it pulls the files from GitHub and applies them to the cluster.
 
-# GitOps with ArgoCD: Setup and Configuration
+# GitOps with ArgoCD: Automatic sync, self-healing, and rollout
 
-## 1. Installing ArgoCD
+## ArgoCD Installation
 
 ```bash
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl create namespace argocd   # Creates the namespace
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml   
 
 ```
 
-### Optimization: Pinning ArgoCD to the Master VM
+**Optimization: Forcing ArgoCD on the Master VM**
 
-To prevent the Raspberry Pi (Worker Node) from being overwhelmed by management overhead, I forced all ArgoCD components to run exclusively on the VM (**k3s-master** node) using a `nodeSelector`.
+To prevent the Raspberry from being slowed down, I forced all ArgoCD components to run exclusively on the VM (k3s-master node) using the **nodeSelector**.
 
 ```bash
-# Example for the main server; repeated for all ArgoCD components (redis, repo-server, etc.)
 kubectl patch deployment argocd-server -n argocd -p '{"spec": {"template": {"spec": {"nodeSelector": {"kubernetes.io/hostname": "k3s-master"}}}}}'
+kubectl patch deployment argocd-repo-server -n argocd -p '{"spec": {"template": {"spec": {"nodeSelector": {"kubernetes.io/hostname": "k3s-master"}}}}}'
+kubectl patch deployment argocd-redis -n argocd -p '{"spec": {"template": {"spec": {"nodeSelector": {"kubernetes.io/hostname": "k3s-master"}}}}}'
+kubectl patch deployment argocd-dex-server -n argocd -p '{"spec": {"template": {"spec": {"nodeSelector": {"kubernetes.io/hostname": "k3s-master"}}}}}'
+kubectl patch deployment argocd-notifications-controller -n argocd -p '{"spec": {"template": {"spec": {"nodeSelector": {"kubernetes.io/hostname": "k3s-master"}}}}}'
+kubectl patch deployment argocd-applicationset-controller -n argocd -p '{"spec": {"template": {"spec": {"nodeSelector": {"kubernetes.io/hostname": "k3s-master"}}}}}'
+kubectl patch statefulset argocd-application-controller -n argocd -p '{"spec": {"template": {"spec": {"nodeSelector": {"kubernetes.io/hostname": "k3s-master"}}}}}'
 
 ```
 
-### 2. Accessing the Dashboard
+**Exposing the service as NodePort:**
 
-I exposed the service via **NodePort** and configured **Caddy** as a Reverse Proxy to provide secure HTTPS access.
+```bash
+kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}'
 
-**Caddyfile configuration:**
+```
 
-```text
+**Finding the assigned port:**
+
+```bash
+kubectl get svc -n argocd argocd-server
+
+```
+
+## Create or modify the Caddyfile:
+
+```plaintext
 argo.enrisox-devops.it {
     reverse_proxy https://192.168.1.X:30260 {
         transport http {
@@ -57,38 +76,99 @@ argo.enrisox-devops.it {
 
 ```
 
-**Retrieve the initial admin password:**
+## Then reload the Caddy container:
+
+```
+sudo systemctl restart caddy
+
+```
+
+## Extract and copy the decrypted password
 
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
 
 ```
 
-## 3. Repository Connection
+**From the PC browser, I opened the subdomain I created to access Argo:**
 
-I created a private GitHub repository containing the application manifests:
+Login:
 
-* `apps/portfolio/deployment.yaml` (Deployment & Service)
-* `apps/portfolio/configmap.yaml` (Portfolio HTML content)
+* User: admin
+* Password: The one copied
 
-Using a **GitHub Personal Access Token (PAT)**, I connected the repository to ArgoCD under **Settings -> Repositories**.
+**Pod Verification**
 
-## 4. Creating the ArgoCD Application
+```bash
+kubectl get pods -n argocd
 
-Through the ArgoCD dashboard, I defined a new application with the following **Sync Policies**:
+```
 
-* **Automated Sync**: Automatically applies differences between Git and the cluster.
-* **Prune**: If a YAML is deleted from Git, ArgoCD removes the resource from the cluster.
-* **Self-Heal**: If someone manually modifies the cluster (drift), ArgoCD reverts it to the state declared in Git.
+## Creating a private repository on GitHub
+![Repository](../imgs/repogithub.png)
 
-## Automatic Update Workflow (Git → ArgoCD → Kubernetes)
+**I created two files in the repository**
 
-With **Automatic Sync** enabled, the deployment lifecycle follows a strictly declarative flow:
+```bash
+- apps/portfolio/deployment.yaml   #containing both the deployment and the service
+- apps/portfolio/configmap.yaml    #containing the html file of my portfolio website
 
-1. **Modify**: Manifests or ConfigMaps are updated in the local Git repo.
-2. **Push**: `git commit` + `git push` sends changes to GitHub.
-3. **Detect**: ArgoCD detects the commit and identifies the "OutOfSync" status.
-4. **Reconcile**: ArgoCD pulls the new manifests and applies them.
-5. **Rollout**: Kubernetes performs a **Zero-Downtime RollingUpdate**, respecting `maxSurge` and `maxUnavailable` parameters while checking Health Probes.
-6. **Validate**: The ArgoCD dashboard confirms the status as `Synced` and `Healthy`.
+```
 
+## GitHub Token
+![Token](../imgs/token.png)
+
+* In GitHub account settings
+* In the left column, scroll to the bottom and click on Developer settings.
+* There you will find Personal access tokens. Click on it and choose Tokens (classic).
+* check the **repo** box which contains the necessary permissions
+* EXPIRATION 30 DAYS or 60
+
+![Token](../imgs/argo1.png)
+
+Settings -> Repositories -> + CONNECT REPO and choose https:
+![Token](../imgs/argo3.png)
+
+* **Type**: git.
+* **Project**: default.
+* **Repository URL**: Paste the HTTPS address of your repo (e.g.: [https://github.com/YourUsername/k3s-gitops-infra.git](https://www.google.com/search?q=https://github.com/YourUsername/k3s-gitops-infra.git)).
+* **Username**: Enter your GitHub username.
+* **Password**: Paste here the Token (PAT) generated earlier (the one starting with ghp_).
+* **TLS client certificate / SSH private key**: Leave blank, they are not needed for HTTPS connection with a token.
+
+If after pressing connect there is a green dot and it says successful, it worked.
+
+![Token](../imgs/token4.png)
+
+## Creating an Application on ArgoCD
+![Argo-app](../imgs/argo5.png)
+
+From the ArgoCD dashboard, click on + New App and fill it out as follows:
+
+* **Application Name**: portfolio-app
+* **Project**: default
+* **Repository URL**:
+* **Path**: apps/portfolio
+* **Automated Sync**: automatically applies differences between Git and cluster.
+* **Prune**: if I delete a YAML from Git, ArgoCD also deletes the resource from the cluster.
+* **Self-Heal**: if someone manually modifies the cluster, ArgoCD brings it back to the state declared on Git.
+
+**Destination:**
+
+* Cluster URL: [https://kubernetes.default.svc](https://www.google.com/search?q=https://kubernetes.default.svc)
+* Namespace: default
+
+**Create.**
+![Argo-app](../imgs/argo6.png)
+
+## Automatic update workflow (Git → ArgoCD → Kubernetes)
+
+With ArgoCD in **Automatic Sync**, every commit/push to the repository containing the manifests triggers synchronization (either via polling or via webhook).
+
+**Logical flow:**
+
+1. Modify the manifests (or the ConfigMap) in the repo.
+2. "git commit" + "git push".
+3. ArgoCD detects the change and applies the updated manifests in the cluster.
+4. Kubernetes performs a RollingUpdate of the Deployment respecting "maxUnavailable/maxSurge" and the probes → **zero-downtime**.
+5. ArgoCD dashboard shows "Synced" and "Healthy".
