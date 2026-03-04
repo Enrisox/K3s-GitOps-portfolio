@@ -172,3 +172,11 @@ With ArgoCD in **Automatic Sync**, every commit/push to the repository containin
 3. ArgoCD detects the change and applies the updated manifests in the cluster.
 4. Kubernetes performs a RollingUpdate of the Deployment respecting "maxUnavailable/maxSurge" and the probes → **zero-downtime**.
 5. ArgoCD dashboard shows "Synced" and "Healthy".
+
+### Troubleshooting
+If the refresh action on ArgoCD doesen't work
+```bash
+kubectl get pods -n argocd -o wide
+kubectl rollout restart deployment argocd-repo-server -n argocd
+kubectl rollout restart deployment argocd-applicationset-controller -n argocd
+```
