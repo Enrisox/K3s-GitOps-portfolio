@@ -1,6 +1,6 @@
 # Sito Web Portfolio hostato su cluster Kubernetes K3s
 
-Questo progetto descrive la creazione di un'**infrastruttura K3s ibrida** partendo dal mio server **Proxmox** che ospiterà una VM ubuntu server come Nodo Master fino al mio **Raspberry Pi 5 (nodo Worker)**. <br>
+Questo progetto descrive la creazione di un'**infrastruttura K3s ibrida** partendo dal un server **Proxmox** ospitante una VM ubuntu server come Nodo Master fino ad un **Raspberry Pi 5 (nodo Worker)**. <br>
 **Ibrida a livello di:** <br>
 - **architettura**: nodo Master su VM in Proxmox ( architettura x86_64/AMD64 ) e nodo worker su Raspberry Pi ( arch ARM64) 
 - **piattaforme**: Virtuale e fisico.
